@@ -1,0 +1,33 @@
+namespace run2;
+
+table Digit {
+        adc:ushort;
+        deid:ushort;
+        manuid:ushort;
+        manuchannel:ubyte;
+}
+
+table ClusterPos {
+  x: float;
+  y: float;
+  z: float;
+}
+
+table PreCluster {
+  digits: [Digit];
+}
+
+table Cluster {
+  pre: PreCluster;
+  pos: ClusterPos;
+}
+
+table Event {
+        bc: ushort;
+        period: uint;
+        ntracklets: int;
+        isMB: bool;
+        clusters:[Cluster];
+}
+
+root_type Event;

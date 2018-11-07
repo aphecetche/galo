@@ -15,25 +15,54 @@
 package cmd
 
 import (
+	"fmt"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/aphecetche/galo/dataformats/run2"
 	"github.com/spf13/cobra"
 )
 
 // dumpCmd represents the dump command
 var dumpCmd = &cobra.Command{
 	Use:   "dump",
-	Short: "Dump various types of files",
+	Short: "Dump clusters",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		f, err := os.Open(args[0])
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		nevents := run2.ForEachEvent(f, dumpEvent, maxEvents)
+		fmt.Println(nevents, " events processed")
+	},
 }
 
+func dumpEvent(e *run2.Event) {
+
+	fmt.Printf("BC %d Ntracklets %d isMB %v Nclusters %d\n", e.Bc(), e.Ntracklets(), e.IsMB(), e.ClustersLength())
+
+	var clu run2.Cluster
+	for i := 0; i < e.ClustersLength(); i++ {
+		b := e.Clusters(&clu, i)
+		if b == false {
+			log.Fatalf("could not get cluster %d", i)
+		}
+
+		pos := clu.Pos(nil)
+		fmt.Printf("%s X %7.2f Y %7.2f", strings.Repeat(" ", 4), pos.X(), pos.Y())
+
+		pre := clu.Pre(nil)
+		fmt.Printf("%4d digits\n", pre.DigitsLength())
+	}
+
+}
+
+var outputFileName string
+
 func init() {
-	rootCmd.AddCommand(dumpCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// dumpCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// dumpCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	clusterCmd.AddCommand(dumpCmd)
+	dumpCmd.Flags().StringVarP(&outputFileName, "output", "o", "clusters.png", "Output filename")
 }
