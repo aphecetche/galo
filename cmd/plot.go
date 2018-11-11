@@ -15,16 +15,23 @@
 package cmd
 
 import (
+	"fmt"
 	"image/color"
 	"io"
 	"log"
 	"math"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/aphecetche/galo/dataformats/run2"
-	"github.com/aphecetche/pigiron/mapping"
+	"github.com/aphecetche/galo/hist"
 	"github.com/spf13/cobra"
-	"gonum.org/v1/plot"
+	"go-hep.org/x/hep/fit"
+	"go-hep.org/x/hep/hbook"
+	"go-hep.org/x/hep/hplot"
+	"gonum.org/v1/gonum/optimize"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 )
@@ -43,25 +50,37 @@ var plotCmd = &cobra.Command{
 	},
 }
 
-func getClusterPositions(e *run2.Event) plotter.XYs {
-	var clusterPositions plotter.XYs
-	var clu run2.Cluster
-	for i := 0; i < e.ClustersLength(); i++ {
-		e.Clusters(&clu, i)
-		pos := clu.Pos(nil)
-		clusterPositions = append(clusterPositions, struct{ X, Y float64 }{X: float64(pos.X()), Y: float64(pos.Y())})
-	}
-	return clusterPositions
+// ClusterPosFunc computes the (x,y) position of a cluster
+type ClusterPosFunc = func(*run2.Cluster) (float64, float64)
+
+func plotRun2Clusters(r io.Reader) {
+
+	hc := createHistogramCollection()
+
+	run2.ForEachEvent(r, func(e *run2.EventClusters) {
+
+		names := []string{"ww", "wow"}
+		clusterPosFuncs := []ClusterPosFunc{cogWithWeight, cogNoWeight}
+		for i, f := range clusterPosFuncs {
+			hname := "/all/" + names[i]
+			h := hc.H1D(hname)
+			if h == nil {
+				log.Fatalf("could not get histogram %s\n", hname)
+			}
+			fillHisto(h, getClusterResidual(e, f))
+		}
+	}, maxEvents)
+
+	plotHistos(hc)
 }
 
-func getClusterResidual(e *run2.Event, prefunc func(*run2.PreCluster) (float64, float64)) []float64 {
+func getClusterResidual(ec *run2.EventClusters, clufunc ClusterPosFunc) []float64 {
 	var res []float64
 	var clu run2.Cluster
-	for i := 0; i < e.ClustersLength(); i++ {
-		e.Clusters(&clu, i)
+	for i := 0; i < ec.E.ClustersLength(); i++ {
+		ec.E.Clusters(&clu, i)
+		x, y := clufunc(&clu)
 		pos := clu.Pos(nil)
-		pre := clu.Pre(nil)
-		x, y := prefunc(pre)
 		dx := x - float64(pos.X())
 		dy := y - float64(pos.Y())
 		d := math.Sqrt(dx*dx + dy*dy)
@@ -70,34 +89,12 @@ func getClusterResidual(e *run2.Event, prefunc func(*run2.PreCluster) (float64, 
 	return res
 }
 
-type SegPair struct {
-	Bending, NonBending mapping.Segmentation
+func cogNoWeight(clu *run2.Cluster) (float64, float64) {
+	return cog(clu.Pre(nil), false)
 }
 
-var segmentations map[int]SegPair
-
-func segmentation(deid int, bending bool) mapping.Segmentation {
-	seg := segmentations[deid]
-	if seg.Bending == nil {
-		segmentations[deid] = SegPair{
-			Bending:    mapping.NewSegmentation(deid, true),
-			NonBending: mapping.NewSegmentation(deid, false),
-		}
-		seg = segmentations[deid]
-	}
-	if bending {
-		return seg.Bending
-	}
-
-	return seg.NonBending
-}
-
-func cogNoWeight(pre *run2.PreCluster) (float64, float64) {
-	return cog(pre, false)
-}
-
-func cogWithWeight(pre *run2.PreCluster) (float64, float64) {
-	return cog(pre, true)
+func cogWithWeight(clu *run2.Cluster) (float64, float64) {
+	return cog(clu.Pre(nil), true)
 }
 
 // cog compute the center of gravity of the digits within precluster
@@ -130,57 +127,95 @@ func cog(pre *run2.PreCluster, useWeight bool) (float64, float64) {
 	return x, y
 }
 
-func plotRun2Clusters(r io.Reader) {
-	p, err := plot.New()
-	if err != nil {
-		log.Fatalf("could not create plot: %s", err)
+func fillHisto(h *hbook.H1D, values []float64) {
+	for _, v := range values {
+		h.Fill(v, 1.0)
 	}
-	p.Title.Text = "Cluster positions"
-	// var cpos plotter.XYs
-	var res plotter.Values
-	var resW plotter.Values
+}
 
-	run2.ForEachEvent(r, func(e *run2.Event) {
-		// cpos = append(cpos, getClusterPositions(e)...)
-		res = append(res, getClusterResidual(e, cogNoWeight)...)
-		resW = append(resW, getClusterResidual(e, cogWithWeight)...)
-	}, maxEvents)
+func plotHisto(h *hbook.H1D, index int) {
 
-	// s, err := plotter.NewScatter(cpos)
-	// if err != nil {
-	// 	log.Fatalf("could not create scatter plot: %s", err)
+	p := hplot.New()
+	p.X.Label.Text = "Distance (cm)"
+	h.Scale(1 / h.Integral())
+
+	hh := hplot.NewH1D(h)
+	p.Add(hh)
+
+	gaus := func(x, cst, mu, sigma float64) float64 {
+		v := (x - mu) / sigma
+		return cst * math.Exp(-0.5*v*v)
+	}
+
+	res, err := fit.H1D(
+		h,
+		fit.Func1D{
+			F: func(x float64, params []float64) float64 {
+				return gaus(x, params[0], params[1], params[2])
+			},
+			N: 3,
+		},
+		nil,
+		&optimize.NelderMead{},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := res.Status.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("mu=", res.X[1])
+	f := plotter.NewFunction(func(x float64) float64 {
+		return gaus(x, res.X[0], res.X[1], res.X[2])
+	})
+	f.Color = color.RGBA{R: 255, A: 255}
+	f.Samples = 1000
+	p.Add(f)
+
+	p.X.Max = 1.0
+	savePlot(p, index)
+}
+
+func savePlot(p *hplot.Plot, index int) {
+	fname := strings.TrimSuffix(outputFileName, filepath.Ext(outputFileName))
+	fname += strconv.Itoa(index) + ".pdf"
+	err := p.Save(20*vg.Centimeter, -1, fname)
+	if err != nil {
+		log.Fatal("Cannot save histogram:%s", err)
+	}
+}
+
+func createResidualHisto(hc *hist.Collection, path string, name string) {
+	h := hbook.NewH1D(128, 0, 1)
+	h.Ann["name"] = name
+	hc.Add(path, h)
+}
+
+func createHistogramCollection() *hist.Collection {
+
+	hc := hist.NewCollection("plot")
+
+	createResidualHisto(hc, "/all/", "ww")
+	createResidualHisto(hc, "/all/", "wow")
+	createResidualHisto(hc, "/nodup/", "ww")
+	createResidualHisto(hc, "/nodup/", "wow")
+
+	hc.Print(os.Stdout)
+
+	return hc
+}
+
+func plotHistos(hc *hist.Collection) {
+
+	// for i, h := range histos {
+	// 	if h == nil {
+	// 		continue
+	// 	}
+	// 	fmt.Printf("%40s entries %4d Xmean %7.2f\n", h.Name(), h.Entries(), h.XMean())
+	// 	plotHisto(h, i)
 	// }
-	// p.Add(s)
-
-	h, err := plotter.NewHist(res, 512)
-	if err != nil {
-		log.Fatalf("could not create histogram: %s", err)
-	}
-	hw, err := plotter.NewHist(resW, 256)
-	if err != nil {
-		log.Fatalf("could not create histogram: %s", err)
-	}
-
-	blue := color.RGBA{B: 255, A: 255}
-	red := color.RGBA{R: 255, A: 255}
-	h.LineStyle.Color = blue
-	hw.LineStyle.Color = red
-
-	h.FillColor = blue
-	hw.FillColor = red
-
-	h.Normalize(float64(len(res)))
-	hw.Normalize(float64(len(res)))
-	p.Add(hw, h)
-
-	p.X.Max = 1.2
-	// p.Y.Min = 1E-1
-	// p.Y.Scale = plot.LogScale{}
-
-	// Save the plot to a file
-	if err := p.Save(15*vg.Centimeter, 15*vg.Centimeter, outputFileName); err != nil {
-		panic(err)
-	}
 }
 
 func init() {

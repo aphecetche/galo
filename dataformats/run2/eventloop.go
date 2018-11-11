@@ -5,7 +5,10 @@ import (
 	"io"
 )
 
-func ForEachEvent(r io.Reader, efunc func(e *Event), maxEvents int) int {
+// ForEachEvent loops over all events (until reaching maxEvents)
+// in reader, converts it to EventClusters struct and
+// finally executes a function for the EventClusters object.
+func ForEachEvent(r io.Reader, efunc func(ec *EventClusters), maxEvents int) int {
 	nevents := 0
 	for nevents < maxEvents {
 		sb := make([]byte, 4)
@@ -20,7 +23,8 @@ func ForEachEvent(r io.Reader, efunc func(e *Event), maxEvents int) int {
 			panic(err)
 		}
 		event := GetRootAsEvent(buf, 0)
-		efunc(event)
+		ec := GetEventClusters(event)
+		efunc(ec)
 		nevents++
 	}
 	return nevents
