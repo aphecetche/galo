@@ -3,7 +3,6 @@ package hist
 import (
 	"fmt"
 	"io"
-	"log"
 	"path"
 	"sort"
 	"strings"
@@ -11,100 +10,112 @@ import (
 	"go-hep.org/x/hep/hbook"
 )
 
-type objectBag = map[string]hbook.Object
-
 type Collection struct {
 	Name string
-	m    map[string]*objectBag
+	bags map[string]*objectBag
 }
 
 func NewCollection(n string) *Collection {
 	return &Collection{
 		Name: n,
-		m:    make(map[string]*objectBag),
+		bags: make(map[string]*objectBag),
 	}
 }
 
-func correctIdentifier(sid string) string {
-
+func correctPath(sid string) string {
 	cid := sid
 	if len(sid) > 0 {
-
 		if !strings.HasSuffix(sid, "/") {
 			cid = sid + "/"
 		}
-
 		if !strings.HasPrefix(sid, "/") {
 			cid = "/" + sid
 		}
-
 		cid = strings.Replace(cid, "//", "/", -1)
-
 	}
 	return cid
 }
 
-func (hc *Collection) Add(identifier string, h hbook.Object) {
-	sid := correctIdentifier(identifier)
-	_, ok := hc.m[sid]
-	if ok == false {
-		hc.m[sid] = &objectBag{}
-		(*hc.m[sid])[h.Name()] = h
+func (hc *Collection) AddH1(path string, h *hbook.H1D) error {
+	ob := hc.getObjectBagBy(path)
+	if ob == nil {
+		ob = &objectBag{}
+		hc.bags[path] = ob
 	}
+	return ob.Add(h)
+}
 
-	(*hc.m[sid])[h.Name()] = h
+func (hc *Collection) getObjectBagBy(path string) *objectBag {
+	sid := correctPath(path)
+	bag, ok := hc.bags[sid]
+	if ok == false {
+		return nil
+	}
+	return bag
 }
 
 func (hc *Collection) NObjects() int {
 	n := 0
-	for _, nb := range hc.m {
-		n += len(*nb)
+	for _, nb := range hc.bags {
+		n += nb.NObjects()
 	}
 	return n
 }
 
 func (hc *Collection) NKeys() int {
-	return len(hc.m)
+	return len(hc.bags)
 }
 
-func (hc *Collection) SortAllIdentifiers() []string {
-	ids := make([]string, 0, len(hc.m))
-	for sid := range hc.m {
+func (hc *Collection) SortAllpaths() []string {
+	ids := make([]string, 0, len(hc.bags))
+	for sid := range hc.bags {
 		ids = append(ids, sid)
 	}
 	sort.Strings(ids)
 	return ids
 }
 
-func (hc *Collection) H1D(fullIdentifier string) *hbook.H1D {
-	sid := correctIdentifier(FullIdToId(fullIdentifier))
-	oname := FullIdToObjectName(fullIdentifier)
-	nb := hc.m[sid]
-	if nb == nil {
-		log.Fatalf("Could not get objectBag for sid=%s\n", sid)
+func decodeFullPath(fullpath string) (string, string) {
+	path := correctPath(FullIdToId(fullpath))
+	hname := FullIdToObjectName(fullpath)
+	return path, hname
+}
+
+func (hc *Collection) H1D(fullpath string) *hbook.H1D {
+	path, hname := decodeFullPath(fullpath)
+	ob := hc.getObjectBagBy(path)
+	if ob == nil {
+		fmt.Errorf("Could not get objectBag for path=%s\n", path)
 		return nil
 	}
-	h, _ := (*nb)[oname].(*hbook.H1D)
+	o, err := ob.Get(hname)
+	if err != nil {
+		fmt.Errorf("Could not get object %s\n", hname)
+		return nil
+	}
+	h, ok := (*o).(*hbook.H1D)
+	if !ok {
+		fmt.Errorf("Object %s is not a H1D\n", hname)
+		return nil
+	}
 	return h
 }
 
-func FullIdToId(fullIdentifier string) string {
-	return path.Dir(fullIdentifier)
+func FullIdToId(fullpath string) string {
+	return path.Dir(fullpath)
 }
 
-func FullIdToObjectName(fullIdentifier string) string {
-	return path.Base(fullIdentifier)
+func FullIdToObjectName(fullpath string) string {
+	return path.Base(fullpath)
 }
 
 func (hc *Collection) Print(out io.Writer) {
-	identifiers := hc.SortAllIdentifiers()
-	fmt.Fprintf(out, "Number of identifiers %d\n", len(identifiers))
-	for _, sid := range identifiers {
+	paths := hc.SortAllpaths()
+	fmt.Fprintf(out, "Number of paths %d\n", len(paths))
+	for _, sid := range paths {
 		fmt.Fprintf(out, "KEY %s\n", sid)
-		nb := hc.m[sid]
-		for _, obj := range *nb {
-			fmt.Fprintf(out, "%sOBJ:%s\n", strings.Repeat(" ", 8), obj.Name())
-		}
+		b := hc.getObjectBagBy(sid)
+		b.Print(out)
 	}
 
 }
