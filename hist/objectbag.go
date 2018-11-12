@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"go-hep.org/x/hep/hbook"
 )
@@ -28,20 +29,23 @@ func (ob *objectBag) Add(h hbook.Object) error {
 	if len(h.Name()) == 0 {
 		return ErrCannotAddUnnamedObject
 	}
+	if ob.m == nil {
+		ob.m = make(map[string]hbook.Object)
+	}
 	ob.m[h.Name()] = h
 	return nil
 }
 
 func (ob *objectBag) Get(hname string) (*hbook.Object, error) {
-	val, err := (*ob)[hname]
-	if err != nil {
-		return Error.Newf("Could not get an object with name %s", hname)
+	val, ok := ob.m[hname]
+	if !ok {
+		return nil, fmt.Errorf("Could not get an object with name %s", hname)
 	}
-	return val
+	return &val, nil
 }
 
 func (ob *objectBag) Print(out io.Writer) {
-	for _, hname := range ob.m {
-		fmt.Fprintf(out, "%s\n", hname)
+	for hname, _ := range ob.m {
+		fmt.Fprintf(out, "%sOBJ:%s\n", strings.Repeat(" ", 8), hname)
 	}
 }

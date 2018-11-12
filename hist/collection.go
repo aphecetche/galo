@@ -36,16 +36,22 @@ func correctPath(sid string) string {
 	return cid
 }
 
-func (hc *Collection) AddH1(path string, h *hbook.H1D) error {
+func (hc *Collection) Add(path string, h hbook.Object) error {
 	ob := hc.getObjectBagBy(path)
 	if ob == nil {
 		ob = &objectBag{}
+		if hc.bags == nil {
+			hc.bags = make(map[string]*objectBag)
+		}
 		hc.bags[path] = ob
 	}
 	return ob.Add(h)
 }
 
 func (hc *Collection) getObjectBagBy(path string) *objectBag {
+	if hc.bags == nil {
+		return nil
+	}
 	sid := correctPath(path)
 	bag, ok := hc.bags[sid]
 	if ok == false {
@@ -56,8 +62,9 @@ func (hc *Collection) getObjectBagBy(path string) *objectBag {
 
 func (hc *Collection) NObjects() int {
 	n := 0
-	for _, nb := range hc.bags {
-		n += nb.NObjects()
+	for h, b := range hc.bags {
+		fmt.Println(h)
+		n += b.NObjects()
 	}
 	return n
 }
@@ -66,7 +73,7 @@ func (hc *Collection) NKeys() int {
 	return len(hc.bags)
 }
 
-func (hc *Collection) SortAllpaths() []string {
+func (hc *Collection) SortAllPaths() []string {
 	ids := make([]string, 0, len(hc.bags))
 	for sid := range hc.bags {
 		ids = append(ids, sid)
@@ -110,7 +117,7 @@ func FullIdToObjectName(fullpath string) string {
 }
 
 func (hc *Collection) Print(out io.Writer) {
-	paths := hc.SortAllpaths()
+	paths := hc.SortAllPaths()
 	fmt.Fprintf(out, "Number of paths %d\n", len(paths))
 	for _, sid := range paths {
 		fmt.Fprintf(out, "KEY %s\n", sid)

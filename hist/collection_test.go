@@ -41,7 +41,7 @@ func TestSortAllIdentifiers(t *testing.T) {
 	hc := NewCollection("test")
 	hc.Add("test/a/b/c", hbook.NewH1D(10, 0, 10))
 	hc.Add("test/a/a/b/c", hbook.NewH1D(10, 0, 10))
-	ids := hc.SortAllIdentifiers()
+	ids := hc.SortAllPaths()
 	if len(ids) != 2 {
 		t.Errorf("Want two ids - Got %d", len(ids))
 	}
@@ -57,7 +57,7 @@ func TestPrint(t *testing.T) {
 	h2.Ann["name"] = "test H2"
 	hc.Add("test/a/a/b/c", h2)
 
-	ids := hc.SortAllIdentifiers()
+	ids := hc.SortAllPaths()
 	if len(ids) != 2 {
 		t.Errorf("Want two ids - Got %d", len(ids))
 	}
