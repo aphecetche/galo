@@ -188,12 +188,12 @@ func createHistogramCollection() *hist.Collection {
 	createResidualHisto(hc, "/nodup/ww")
 	createResidualHisto(hc, "/nodup/wow")
 
-	hc.Print(os.Stdout)
 
 	return hc
 }
 
 func plotHistos(hc *hist.Collection) {
+	hc.Print(os.Stdout)
 	for i, h := range hc.H1Ds() {
 		if h == nil || h.Entries()==0{
 			continue
