@@ -1,17 +1,3 @@
-// Copyright © 2018 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package cmd
 
 import (
@@ -26,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/aphecetche/galo/dataformats/run2"
+	"github.com/aphecetche/galo/hist"
 	"github.com/spf13/cobra"
 	"go-hep.org/x/hep/fit"
 	"go-hep.org/x/hep/hbook"
@@ -54,7 +41,7 @@ type ClusterPosFunc = func(*run2.Cluster) (float64, float64)
 
 func plotRun2Clusters(r io.Reader) {
 
-	// hc := createHistogramCollection()
+	hc := createHistogramCollection()
 
 	run2.ForEachEvent(r, func(e *run2.EventClusters) {
 
@@ -62,17 +49,15 @@ func plotRun2Clusters(r io.Reader) {
 		clusterPosFuncs := []ClusterPosFunc{cogWithWeight, cogNoWeight}
 		for i, f := range clusterPosFuncs {
 			hname := "/all/" + names[i]
-			_ = f
-			fmt.Println(hname)
-			// h := hc.H1D(hname)
-			// if h == nil {
-			// 	log.Fatalf("could not get histogram %s\n", hname)
-			// }
-			// fillHisto(h, getClusterResidual(e, f))
+			h, err := hc.H1D(hname)
+			if err != nil {
+				log.Fatalf("could not get histogram %s\n", hname)
+			}
+			fillHisto(h, getClusterResidual(e, f))
 		}
 	}, maxEvents)
 
-	// plotHistos(hc)
+	plotHistos(hc)
 }
 
 func getClusterResidual(ec *run2.EventClusters, clufunc ClusterPosFunc) []float64 {
@@ -188,36 +173,35 @@ func savePlot(p *hplot.Plot, index int) {
 	}
 }
 
-// func createResidualHisto(hc *hist.Collection, path string, name string) {
-// 	h := hbook.NewH1D(128, 0, 1)
-// 	h.Ann["name"] = name
-// 	hc.Add(path, h)
-// }
-//
-// func createHistogramCollection() *hist.Collection {
-//
-// 	hc := hist.NewCollection("plot")
-//
-// 	createResidualHisto(hc, "/all/", "ww")
-// 	createResidualHisto(hc, "/all/", "wow")
-// 	createResidualHisto(hc, "/nodup/", "ww")
-// 	createResidualHisto(hc, "/nodup/", "wow")
-//
-// 	hc.Print(os.Stdout)
-//
-// 	return hc
-// }
+func createResidualHisto(hc *hist.Collection, name string) {
+	h := hbook.NewH1D(128, 0, 1)
+	h.Annotation()["name"] = name
+	hc.Add(h)
+}
 
-// func plotHistos(hc *hist.Collection) {
-//
-// 	// for i, h := range histos {
-// 	// 	if h == nil {
-// 	// 		continue
-// 	// 	}
-// 	// 	fmt.Printf("%40s entries %4d Xmean %7.2f\n", h.Name(), h.Entries(), h.XMean())
-// 	// 	plotHisto(h, i)
-// 	// }
-// }
+func createHistogramCollection() *hist.Collection {
+
+	hc := hist.NewCollection("plot")
+
+	createResidualHisto(hc, "/all/ww")
+	createResidualHisto(hc, "/all/wow")
+	createResidualHisto(hc, "/nodup/ww")
+	createResidualHisto(hc, "/nodup/wow")
+
+	hc.Print(os.Stdout)
+
+	return hc
+}
+
+func plotHistos(hc *hist.Collection) {
+	for i, h := range hc.H1Ds() {
+		if h == nil || h.Entries()==0{
+			continue
+		}
+		fmt.Printf("%40s entries %4d Xmean %7.2f\n", h.Name(), h.Entries(), h.XMean())
+		plotHisto(h, i)
+	}
+}
 
 func init() {
 	clusterCmd.AddCommand(plotCmd)

@@ -1,8 +1,6 @@
 package hist
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"go-hep.org/x/hep/hbook"
@@ -35,42 +33,47 @@ func TestAdd(t *testing.T) {
 	if c.NObjects() != expect {
 		t.Errorf("Want %d objects - Got %d\n", expect, c.NObjects())
 	}
-	c.Print(os.Stdout)
 }
 
-func TestRetrieveObject(t *testing.T) {
+func TestRetrieveExistingObjectShouldNotFail(t *testing.T) {
 	c := createCollection()
-	c.Print(os.Stdout)
-	h, err := c.Get("htest2")
+	_, err := c.Get("htest2")
 	if err != nil {
 		t.Errorf("could not get htest2")
-	} else {
-		fmt.Printf("h=%s %p %T\n", (*h).Name(), h, h)
+	}
+}
+
+func TestRetrieveNonExistentObjectShouldReturnError(t *testing.T) {
+	c := createCollection()
+	_, err := c.Get("toto")
+	want := ErrNonExistingObject
+	if err != want {
+		t.Errorf("want error %s - got %s", want, err)
 	}
 }
 
 func TestRetrieveH1D(t *testing.T) {
 	c := createCollection()
-	c.Print(os.Stdout)
 	h, err := c.H1D("htest")
 	if err != nil {
 		t.Errorf("could not get htest")
-	} else {
-		fmt.Printf("h=%s %p %T\n", (*h).Name(), h, h)
-		fmt.Printf("h[15]=%g\n", (*h).Value(15))
 	}
-	c.Print(os.Stdout)
+	want := 30.0
+	got := (*h).Value(15)
+	if got != want {
+		t.Errorf("want %v - got %v", want, got)
+	}
 }
 
 func TestRetrieveH2D(t *testing.T) {
 	c := createCollection()
-	c.Print(os.Stdout)
 	h2, err := c.H2D("htest2")
 	if err != nil {
 		t.Errorf("could not get htest2")
-	} else {
-		fmt.Printf("h2=%s %p %T\n", (*h2).Name(), h2, h2)
-		fmt.Printf("h2[5,10]=%g\n", h2.Binning.Bins[155].Dist.X.SumW())
 	}
-	c.Print(os.Stdout)
+	want := 75.0
+	got := h2.Binning.Bins[155].Dist.X.SumW()
+	if got != want {
+		t.Errorf("want %v - got %v", want, got)
+	}
 }

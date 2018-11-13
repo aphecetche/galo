@@ -10,13 +10,19 @@ import (
 )
 
 type Collection struct {
-	m map[string]hbook.Object
+	Name string
+	m    map[string]hbook.Object
 }
 
 var (
 	ErrCannotAddNilObject     = errors.New("Cannot add a nil object")
 	ErrCannotAddUnnamedObject = errors.New("Cannot add an unnamed object")
+	ErrNonExistingObject      = errors.New("Non existing object")
 )
+
+func NewCollection(name string) *Collection {
+  return &Collection{Name:name}
+}
 
 func (ob *Collection) NObjects() int {
 	return len(ob.m)
@@ -39,9 +45,20 @@ func (ob *Collection) Add(h hbook.Object) error {
 func (ob *Collection) Get(hname string) (*hbook.Object, error) {
 	val, ok := ob.m[hname]
 	if !ok {
-		return nil, fmt.Errorf("Could not get an object with name %s", hname)
+		return nil, ErrNonExistingObject
 	}
 	return &val, nil
+}
+
+func (ob *Collection) H1Ds() []*hbook.H1D {
+	hc := make([]*hbook.H1D,len(ob.m))
+	for _, o := range ob.m {
+	  h1, ok := o.(*hbook.H1D)
+	  if ok {
+		  hc = append(hc,h1)
+	  }
+  }
+  return hc
 }
 
 func (ob *Collection) H1D(hname string) (*hbook.H1D, error) {
