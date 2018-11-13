@@ -12,15 +12,15 @@ func ForEachEvent(r io.Reader, efunc func(ec *EventClusters), maxEvents int) int
 	nevents := 0
 	for nevents < maxEvents {
 		sb := make([]byte, 4)
-		nb, err := r.Read(sb)
-		if nb != 4 {
+		nb, err := io.ReadFull(r,sb)
+		if nb != 4 || err == io.EOF {
 			break
 		}
 		size := binary.LittleEndian.Uint32(sb)
 		buf := make([]byte, size)
-		nb, err = r.Read(buf)
-		if uint32(nb) != size {
-			panic(err)
+		nb, err = io.ReadFull(r,buf)
+		if uint32(nb) != size || err == io.EOF {
+			break
 		}
 		event := GetRootAsEvent(buf, 0)
 		ec := GetEventClusters(event)

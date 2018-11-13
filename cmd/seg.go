@@ -1,6 +1,10 @@
 package cmd
 
-import "github.com/aphecetche/pigiron/mapping"
+import (
+	"fmt"
+
+	"github.com/aphecetche/pigiron/mapping"
+)
 
 type SegPair struct {
 	Bending, NonBending mapping.Segmentation
@@ -16,6 +20,7 @@ func segmentation(deid int, bending bool) mapping.Segmentation {
 			NonBending: mapping.NewSegmentation(deid, false),
 		}
 		seg = segmentations[deid]
+		fmt.Printf("Created segmentation pair for DE %4d\n", deid)
 	}
 	if bending {
 		return seg.Bending

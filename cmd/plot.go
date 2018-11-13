@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"image/color"
 	"io"
@@ -32,7 +33,7 @@ var plotCmd = &cobra.Command{
 			panic(err)
 		}
 		defer f.Close()
-		plotRun2Clusters(f)
+		plotRun2Clusters(bufio.NewReader(f))
 	},
 }
 
@@ -188,14 +189,13 @@ func createHistogramCollection() *hist.Collection {
 	createResidualHisto(hc, "/nodup/ww")
 	createResidualHisto(hc, "/nodup/wow")
 
-
 	return hc
 }
 
 func plotHistos(hc *hist.Collection) {
 	hc.Print(os.Stdout)
 	for i, h := range hc.H1Ds() {
-		if h == nil || h.Entries()==0{
+		if h == nil || h.Entries() == 0 {
 			continue
 		}
 		fmt.Printf("%40s entries %4d Xmean %7.2f\n", h.Name(), h.Entries(), h.XMean())
