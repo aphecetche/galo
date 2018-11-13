@@ -1,94 +1,76 @@
 package hist
 
 import (
-	"bytes"
+	"fmt"
+	"os"
 	"testing"
 
 	"go-hep.org/x/hep/hbook"
 )
 
-func TestCreateCollection(t *testing.T) {
-
-	hc := NewCollection("test")
-
-	if hc.NKeys() != 0 {
-		t.Errorf("Want no key - Got %d", hc.NKeys())
-	}
-
-	if hc.NObjects() != 0 {
-		t.Errorf("Want no object - Got %d", hc.NObjects())
+func TestEmptyCollection(t *testing.T) {
+	b := Collection{}
+	if b.NObjects() != 0 {
+		t.Errorf("Want 0 objects - Got %d\n", b.NObjects())
 	}
 }
 
-func TestAddToCollection(t *testing.T) {
+func createCollection() Collection {
+	c := Collection{}
+	h := hbook.NewH1D(20, 0, 20)
+	h.Annotation()["name"] = "htest"
+	h.Fill(15, 15)
+	h.Fill(15, 15)
+	c.Add(h)
+	h2 := hbook.NewH2D(10, 0, 10, 30, 0, 30)
+	h2.Annotation()["name"] = "htest2"
+	h2.Fill(5, 15, 75)
+	c.Add(h2)
+	return c
+}
 
-	hc := NewCollection("test")
-
-	h := hbook.NewH1D(10, 0, 10)
-
-	hc.Add("test/a/b/c", h)
-
-	if hc.NKeys() != 1 {
-		t.Errorf("Want one key - Got %d", hc.NKeys())
+func TestAdd(t *testing.T) {
+	c := createCollection()
+	const expect int = 2
+	if c.NObjects() != expect {
+		t.Errorf("Want %d objects - Got %d\n", expect, c.NObjects())
 	}
+	c.Print(os.Stdout)
+}
 
-	if hc.NObjects() != 1 {
-		t.Errorf("Want one object - Got %d", hc.NObjects())
+func TestRetrieveObject(t *testing.T) {
+	c := createCollection()
+	c.Print(os.Stdout)
+	h, err := c.Get("htest2")
+	if err != nil {
+		t.Errorf("could not get htest2")
+	} else {
+		fmt.Printf("h=%s %p %T\n", (*h).Name(), h, h)
 	}
 }
 
-func TestSortAllIdentifiers(t *testing.T) {
-	hc := NewCollection("test")
-	hc.Add("test/a/b/c", hbook.NewH1D(10, 0, 10))
-	hc.Add("test/a/a/b/c", hbook.NewH1D(10, 0, 10))
-	ids := hc.SortAllPaths()
-	if len(ids) != 2 {
-		t.Errorf("Want two ids - Got %d", len(ids))
+func TestRetrieveH1D(t *testing.T) {
+	c := createCollection()
+	c.Print(os.Stdout)
+	h, err := c.H1D("htest")
+	if err != nil {
+		t.Errorf("could not get htest")
+	} else {
+		fmt.Printf("h=%s %p %T\n", (*h).Name(), h, h)
+		fmt.Printf("h[15]=%g\n", (*h).Value(15))
 	}
+	c.Print(os.Stdout)
 }
 
-func TestPrint(t *testing.T) {
-	hc := NewCollection("test")
-	h := hbook.NewH1D(10, 0, 10)
-	h.Ann["name"] = "test H1"
-	hc.Add("test/a/b/c", h)
-
-	h2 := hbook.NewH2D(10, 0, 10, 20, 0, 20)
-	h2.Ann["name"] = "test H2"
-	hc.Add("test/a/a/b/c", h2)
-
-	ids := hc.SortAllPaths()
-	if len(ids) != 2 {
-		t.Errorf("Want two ids - Got %d", len(ids))
+func TestRetrieveH2D(t *testing.T) {
+	c := createCollection()
+	c.Print(os.Stdout)
+	h2, err := c.H2D("htest2")
+	if err != nil {
+		t.Errorf("could not get htest2")
+	} else {
+		fmt.Printf("h2=%s %p %T\n", (*h2).Name(), h2, h2)
+		fmt.Printf("h2[5,10]=%g\n", h2.Binning.Bins[155].Dist.X.SumW())
 	}
-
-	buf := new(bytes.Buffer)
-	hc.Print(buf)
-
-	expect := `Number of identifiers 2
-KEY /test/a/a/b/c
-        OBJ:test H2
-KEY /test/a/b/c
-        OBJ:test H1
-`
-
-	if expect != buf.String() {
-		t.Errorf("Did not get expected output from print. Expected:\n%s\nGot:\n%s\n", expect, buf.String())
-	}
-}
-
-func TestRetrieve(t *testing.T) {
-	hc := NewCollection("test")
-	h := hbook.NewH1D(10, 0, 10)
-	h.Ann["name"] = "h1"
-	hc.Add("test/a/b/c", h)
-	bin := 5
-	expected := 42.42
-	h.Fill(5, 42)
-	h.Fill(5, 0.42)
-	hr := hc.H1D("/test/a/b/c/h1")
-	v := hr.Value(bin)
-	if v != expected {
-		t.Errorf("Expected %v - Got %v\n", expected, v)
-	}
+	c.Print(os.Stdout)
 }
