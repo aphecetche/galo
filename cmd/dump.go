@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aphecetche/galo/dataformats/run2"
+	"github.com/aphecetche/galo/run2"
 	"github.com/spf13/cobra"
 )
 

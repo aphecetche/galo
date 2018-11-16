@@ -15,7 +15,6 @@ type EventClusters struct {
 }
 
 func GetEventClusters(e *Event) *EventClusters {
-
 	ec := EventClusters{
 		E:        e,
 		isDup:    make([]bool, e.ClustersLength()),
@@ -36,7 +35,18 @@ func GetEventClusters(e *Event) *EventClusters {
 		}
 	}
 	return &ec
+}
 
+func (ec *EventClusters) IsSimple(i int) bool {
+	return ec.IsDup(i) == false && ec.IsSplit(i) == false
+}
+
+func (ec *EventClusters) IsSplit(i int) bool {
+	return ec.isSplit[i]
+}
+
+func (ec *EventClusters) IsDup(i int) bool {
+	return ec.isDup[i]
 }
 
 func (ec *EventClusters) Label(i int) string {
@@ -105,5 +115,4 @@ func DumpEventClusters(ec *EventClusters) {
 		}
 		fmt.Println("")
 	}
-
 }
