@@ -80,39 +80,43 @@ func (ec *EventClusters) dumpHeader() {
 	fmt.Printf("\n")
 }
 
+func DumpOneEventCluster(ec *EventClusters, i int) {
+	var clu Cluster
+	var digit Digit
+
+	b := ec.E.Clusters(&clu, i)
+	if b == false {
+		log.Fatalf("could not get cluster %d", i)
+	}
+
+	pos := clu.Pos(nil)
+	fmt.Printf("%6s X %7.4f Y %7.4f", ec.Label(i), pos.X(), pos.Y())
+
+	pre := clu.Pre(nil)
+	fmt.Printf("%4d digits [DE,MANU,CH]:", pre.DigitsLength())
+	n := 0
+	for id := 0; id < pre.DigitsLength(); id++ {
+		if n == 0 {
+			fmt.Printf("\n%s", strings.Repeat(" ", 15))
+		}
+		bd := pre.Digits(&digit, id)
+		if bd == false {
+			log.Fatalf("could not get digit %d", i)
+		}
+		fmt.Printf(" {%4d,%4d,%2d}", digit.Deid(), digit.Manuid(), digit.Manuchannel())
+		n++
+		if n == 5 {
+			n = 0
+		}
+	}
+}
+
 func DumpEventClusters(ec *EventClusters) {
 
 	ec.dumpHeader()
 
-	var clu Cluster
-	var digit Digit
-
 	for i := 0; i < ec.E.ClustersLength(); i++ {
-		b := ec.E.Clusters(&clu, i)
-		if b == false {
-			log.Fatalf("could not get cluster %d", i)
-		}
-
-		pos := clu.Pos(nil)
-		fmt.Printf("%6s X %7.4f Y %7.4f", ec.Label(i), pos.X(), pos.Y())
-
-		pre := clu.Pre(nil)
-		fmt.Printf("%4d digits [DE,MANU,CH]:", pre.DigitsLength())
-		n := 0
-		for id := 0; id < pre.DigitsLength(); id++ {
-			if n == 0 {
-				fmt.Printf("\n%s", strings.Repeat(" ", 15))
-			}
-			bd := pre.Digits(&digit, id)
-			if bd == false {
-				log.Fatalf("could not get digit %d", i)
-			}
-			fmt.Printf(" {%4d,%4d,%2d}", digit.Deid(), digit.Manuid(), digit.Manuchannel())
-			n++
-			if n == 5 {
-				n = 0
-			}
-		}
+		DumpOneEventCluster(ec, i)
 		fmt.Println("")
 	}
 }

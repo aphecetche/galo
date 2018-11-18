@@ -1,6 +1,7 @@
 package run2
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/aphecetche/pigiron/mapping"
@@ -23,6 +24,19 @@ type ClusterPosFunc struct {
 type ClusterSelFunc struct {
 	F    func(*EventClusters, int) bool
 	Name string
+}
+
+func strangeClusters(ec *EventClusters, i int) bool {
+	var clu Cluster
+	ec.E.Clusters(&clu, i)
+	n := clu.Pre(nil).DigitsLength()
+	if n > 200 {
+		fmt.Println("cluster with", n, "digits")
+		cluster2SVG(ec, i)
+		DumpOneEventCluster(ec, i)
+		fmt.Println("")
+	}
+	return false
 }
 
 func allClusters(ec *EventClusters, i int) bool {

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/aphecetche/galo/f1d"
 	"github.com/aphecetche/galo/hist"
 	"go-hep.org/x/hep/fit"
 	"go-hep.org/x/hep/hbook"
@@ -30,6 +31,7 @@ var (
 		{simpleClusters, "simpleClusters"},
 		{splitClusters, "splitClusters"},
 		{dupClusters, "dupClusters"},
+		{strangeClusters, "strangeClusters"},
 	}
 )
 
@@ -52,11 +54,13 @@ func fillHistogramCollection(ec *EventClusters, hc *hist.Collection, cc *hist.Co
 	//here hc should be hl <=> hist.Library <=> map of path -> hist.Collection
 
 	for i := 0; i < ec.E.ClustersLength(); i++ {
+
 		for _, cluselfunc := range ClusterSelFuncs {
 			if cluselfunc.F(ec, i) == false {
 				continue
 			}
 			(*cc).Incr(cluselfunc.Name)
+
 			for _, cluposfunc := range ClusterPosFuncs {
 				res := getClusterResidual(ec, i, cluposfunc)
 				// here should instead get a "collection" with all the
@@ -90,6 +94,7 @@ func PlotClusters(r io.ReaderAt, maxEvents int, outputFileName string) {
 	}, maxEvents)
 
 	plotHistogramCollection(hc, outputFileName)
+	saveFunction(outputFileName)
 	fmt.Println(cc)
 }
 
@@ -112,18 +117,18 @@ func plotHisto(h *hbook.H1D, outputFileName string) {
 	hh := hplot.NewH1D(h)
 	p.Add(hh)
 
-	gaus := func(x, cst, mu, sigma float64) float64 {
-		v := (x - mu) / sigma
-		return cst * math.Exp(-0.5*v*v)
-	}
-
 	res, err := fit.H1D(
 		h,
 		fit.Func1D{
 			F: func(x float64, params []float64) float64 {
-				return gaus(x, params[0], params[1], params[2])
+				// return gaus(x, params[0], params[1], params[2])
+				// return moyal(x, params[0], params[1], params[2])
+				// return params[0] * Landau(x, params[1], params[2])
+				return params[0] * f1d.Levy(x, params[1], params[2])
 			},
 			N: 3,
+			// Ps: []float64{1.0, 0.1},
+			// N: 3,
 		},
 		nil,
 		&optimize.NelderMead{},
@@ -136,9 +141,11 @@ func plotHisto(h *hbook.H1D, outputFileName string) {
 		log.Fatal(err)
 	}
 
-	fmt.Println("mu=", res.X[1])
+	fmt.Println("res=", res)
 	f := plotter.NewFunction(func(x float64) float64 {
-		return gaus(x, res.X[0], res.X[1], res.X[2])
+		// return gaus(x, res.X[0], res.X[1], res.X[2])
+		// return moyal(x, res.X[0], res.X[1], res.X[2])
+		return res.X[0] * f1d.Levy(x, res.X[1], res.X[2])
 	})
 	f.Color = color.RGBA{R: 255, A: 255}
 	f.Samples = 1000
