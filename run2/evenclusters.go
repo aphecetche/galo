@@ -8,18 +8,20 @@ import (
 )
 
 type EventClusters struct {
-	E        *Event
-	isDup    []bool
-	dupIndex []int
-	isSplit  []bool
+	E          *Event
+	isDup      []bool
+	dupIndex   []int
+	isSplit    []bool
+	splitIndex []int
 }
 
 func GetEventClusters(e *Event) *EventClusters {
 	ec := EventClusters{
-		E:        e,
-		isDup:    make([]bool, e.ClustersLength()),
-		dupIndex: make([]int, e.ClustersLength()),
-		isSplit:  make([]bool, e.ClustersLength())}
+		E:          e,
+		isDup:      make([]bool, e.ClustersLength()),
+		dupIndex:   make([]int, e.ClustersLength()),
+		isSplit:    make([]bool, e.ClustersLength()),
+		splitIndex: make([]int, e.ClustersLength())}
 
 	var ci, cj Cluster
 	for i := 0; i < e.ClustersLength(); i++ {
@@ -31,6 +33,15 @@ func GetEventClusters(e *Event) *EventClusters {
 				ec.isDup[j] = true
 				ec.dupIndex[i] = i
 				ec.dupIndex[j] = i
+			} else {
+				pi := ci.Pre(nil)
+				pj := cj.Pre(nil)
+				if SamePreCluster(*pi, *pj) {
+					ec.isSplit[i] = true
+					ec.isSplit[j] = true
+					ec.splitIndex[i] = i
+					ec.splitIndex[j] = i
+				}
 			}
 		}
 	}
@@ -55,7 +66,7 @@ func (ec *EventClusters) Label(i int) string {
 	}
 
 	if ec.isSplit[i] {
-		return "S"
+		return "S" + strconv.Itoa(ec.splitIndex[i])
 	}
 	return "N"
 }

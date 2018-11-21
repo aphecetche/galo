@@ -27,14 +27,17 @@ type ClusterSelFunc struct {
 }
 
 func strangeClusters(ec *EventClusters, i int) bool {
+	silent := true
 	var clu Cluster
 	ec.E.Clusters(&clu, i)
 	n := clu.Pre(nil).DigitsLength()
 	if n > 200 {
-		fmt.Println("cluster with", n, "digits")
 		cluster2SVG(ec, i)
-		DumpOneEventCluster(ec, i)
-		fmt.Println("")
+		if !silent {
+			fmt.Println("WARNING", "cluster with", n, "digits")
+			DumpEventClusters(ec)
+			fmt.Println("")
+		}
 	}
 	return false
 }

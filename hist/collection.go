@@ -21,7 +21,7 @@ var (
 )
 
 func NewCollection(name string) *Collection {
-  return &Collection{Name:name}
+	return &Collection{Name: name}
 }
 
 func (ob *Collection) NObjects() int {
@@ -51,14 +51,14 @@ func (ob *Collection) Get(hname string) (*hbook.Object, error) {
 }
 
 func (ob *Collection) H1Ds() []*hbook.H1D {
-	hc := make([]*hbook.H1D,len(ob.m))
+	hc := make([]*hbook.H1D, len(ob.m))
 	for _, o := range ob.m {
-	  h1, ok := o.(*hbook.H1D)
-	  if ok {
-		  hc = append(hc,h1)
-	  }
-  }
-  return hc
+		h1, ok := o.(*hbook.H1D)
+		if ok {
+			hc = append(hc, h1)
+		}
+	}
+	return hc
 }
 
 func (ob *Collection) H1D(hname string) (*hbook.H1D, error) {
@@ -87,14 +87,20 @@ func (ob *Collection) H2D(hname string) (*hbook.H2D, error) {
 
 func (ob *Collection) Print(out io.Writer) {
 	for hname, o := range ob.m {
-		fmt.Fprintf(out, "%sNAME:%20s ", strings.Repeat(" ", 8), hname)
+		fmt.Fprintf(out, "%sNAME:%-30s ", strings.Repeat(" ", 8), hname)
 		switch v := o.(type) {
 		case *hbook.H1D:
-			fmt.Fprintf(out, "H1D NENTRIES %d", v.Entries())
+			fmt.Fprintf(out, "H1D NENTRIES %6d", v.Entries())
+			m, ok := v.Annotation()["mu"]
+			if ok {
+				s := v.Annotation()["sigma"]
+				fmt.Fprintf(out, " MU=%7.2f microns SIGMA=%7.2f microns", m.(float64)*1E4,
+					s.(float64)*1E4)
+			}
 		case *hbook.H2D:
-			fmt.Fprintf(out, "H2D NENTRIES %d", v.Entries())
+			fmt.Fprintf(out, "H2D NENTRIES %6d", v.Entries())
 		default:
-			fmt.Fprintf(out, "other stuf")
+			fmt.Fprintf(out, "other stuff")
 		}
 		fmt.Fprintf(out, "\n")
 	}

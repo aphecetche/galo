@@ -20,8 +20,9 @@ var plotCmd = &cobra.Command{
 		run2.PlotClusters(f, maxEvents, outputFileName)
 	},
 }
+var silent bool
 
 func init() {
 	clusterCmd.AddCommand(plotCmd)
-	plotCmd.Flags().StringVarP(&outputFileName, "output", "o", "clusters.png", "Output image filename")
+	plotCmd.Flags().BoolVarP(&silent, "silent", "s", false, "no text output")
 }
