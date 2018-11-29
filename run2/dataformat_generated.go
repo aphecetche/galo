@@ -74,8 +74,20 @@ func (rcv *Digit) MutateManuchannel(n byte) bool {
 	return rcv._tab.MutateByteSlot(10, n)
 }
 
+func (rcv *Digit) Charge() float32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.GetFloat32(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *Digit) MutateCharge(n float32) bool {
+	return rcv._tab.MutateFloat32Slot(12, n)
+}
+
 func DigitStart(builder *flatbuffers.Builder) {
-	builder.StartObject(4)
+	builder.StartObject(5)
 }
 func DigitAddAdc(builder *flatbuffers.Builder, adc uint16) {
 	builder.PrependUint16Slot(0, adc, 0)
@@ -88,6 +100,9 @@ func DigitAddManuid(builder *flatbuffers.Builder, manuid uint16) {
 }
 func DigitAddManuchannel(builder *flatbuffers.Builder, manuchannel byte) {
 	builder.PrependByteSlot(3, manuchannel, 0)
+}
+func DigitAddCharge(builder *flatbuffers.Builder, charge float32) {
+	builder.PrependFloat32Slot(4, charge, 0.0)
 }
 func DigitEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
@@ -261,14 +276,29 @@ func (rcv *Cluster) Pos(obj *ClusterPos) *ClusterPos {
 	return nil
 }
 
+func (rcv *Cluster) Charge() float32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.GetFloat32(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *Cluster) MutateCharge(n float32) bool {
+	return rcv._tab.MutateFloat32Slot(8, n)
+}
+
 func ClusterStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(3)
 }
 func ClusterAddPre(builder *flatbuffers.Builder, pre flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(pre), 0)
 }
 func ClusterAddPos(builder *flatbuffers.Builder, pos flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(pos), 0)
+}
+func ClusterAddCharge(builder *flatbuffers.Builder, charge float32) {
+	builder.PrependFloat32Slot(2, charge, 0.0)
 }
 func ClusterEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

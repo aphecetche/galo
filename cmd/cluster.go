@@ -18,7 +18,3 @@ func init() {
 	// persistent flag is for this command and all its sub-commands
 	clusterCmd.PersistentFlags().IntVarP(&maxEvents, "max-events", "m", 100000000, "Maximum number of events to process")
 }
-
-func init() {
-	clusterCmd.AddCommand(plotCmd)
-}

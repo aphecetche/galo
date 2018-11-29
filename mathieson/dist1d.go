@@ -1,6 +1,8 @@
 package mathieson
 
-import "math"
+import (
+	"math"
+)
 
 type Dist1D struct {
 	inversePitch float64
@@ -56,9 +58,9 @@ func computeK2K4FromK3(k3 float64) (float64, float64) {
 
 // Integral computes the 1D integral of the Dist between x1 and x2.
 func (m *Dist1D) Integral(x1, x2 float64) float64 {
-	x1 *= m.inversePitch
-	x2 *= m.inversePitch
-	u1 := m.sk3 * math.Tanh(m.k2*x1)
-	u2 := m.sk3 * math.Tanh(m.k2*x2)
+	lambda1 := x1 * m.inversePitch
+	lambda2 := x2 * m.inversePitch
+	u1 := m.sk3 * math.Tanh(m.k2*lambda1)
+	u2 := m.sk3 * math.Tanh(m.k2*lambda2)
 	return m.k4 * (math.Atan(u1) - math.Atan(u2))
 }

@@ -11,12 +11,11 @@ import (
 
 var cluster2SVGindex int
 
-func cluster2SVG(ec *EventClusters, i int) {
-
+func cluster2pads(ec *EventClusters, i int) ([]geo.Polygon, []geo.Polygon) {
 	var clu Cluster
 	ec.E.Clusters(&clu, i)
 
-	var pads, bpads, nbpads []geo.Polygon
+	var bpads, nbpads []geo.Polygon
 
 	pre := clu.Pre(nil)
 
@@ -42,27 +41,49 @@ func cluster2SVG(ec *EventClusters, i int) {
 			{X: x + dx, Y: y + dy},
 			{X: x - dx, Y: y + dy},
 			{X: x - dx, Y: y - dy}}
-		pads = append(pads, p)
 		if isBending {
 			bpads = append(bpads, p)
 		} else {
 			nbpads = append(nbpads, p)
 		}
 	}
+	return bpads, nbpads
+}
+
+func cluster2SVG(ec *EventClusters, i int, filename string, showFullDE bool) {
+
+	var clu Cluster
+	ec.E.Clusters(&clu, i)
+
+	bpads, nbpads := cluster2pads(ec, i)
+
+	var pads []geo.Polygon
+	pads = append(pads, bpads...)
+	pads = append(pads, nbpads...)
 
 	c, err := geo.NewContour(pads)
 	if err != nil {
 		panic(err)
 	}
 
-	seg := segcache.Segmentation(100, true)
-	segcontour := segcontour.Contour(seg)
+	var b geo.BBox
+	var deContour geo.Contour
 
-	svg := geo.SVGWriter{Width: 1024, BBox: segcontour.BBox()}
+	if showFullDE {
+		seg := segcache.Segmentation(100, true)
+		deContour = segcontour.Contour(seg)
+		b = deContour.BBox()
+	} else {
+		b = c.BBox()
+	}
 
-	svg.GroupStart("de")
-	svg.Contour(&segcontour)
-	svg.GroupEnd()
+	svg := geo.SVGWriter{Width: 1024, BBox: b}
+
+	if showFullDE {
+		svg.GroupStart("de")
+		svg.Contour(&deContour)
+		svg.GroupEnd()
+	}
 
 	svg.GroupStart("non-bending-pads")
 	for _, p := range nbpads {
@@ -106,13 +127,18 @@ func cluster2SVG(ec *EventClusters, i int) {
   stroke: rgba(200,200,200,1.0);
   stroke-width: 0.0125px;
   fill:rgba(200,200,200,0.25);
+  }
 `)
 
-	out, err := os.Create("toto" + strconv.Itoa(cluster2SVGindex) + ".html")
+	out, err := os.Create(filename + strconv.Itoa(cluster2SVGindex) + ".html")
 	cluster2SVGindex++
 	if err != nil {
 		panic(err)
 	}
 
 	svg.WriteHTML(out)
+}
+
+func padChargeHisto(clu *Cluster, bending bool) []geo.Polygon {
+	return nil
 }
