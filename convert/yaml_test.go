@@ -15,7 +15,7 @@ y: 74.13
 dx: 0.315
 dy: 0.21
 `
-	var pix YaPixel
+	var pix yaPixel
 	err := yaml.Unmarshal([]byte(pixelYAML), &pix)
 	if err != nil {
 		log.Fatalf("Error:%v", err)
@@ -39,7 +39,7 @@ func TestReadPixelSeq(t *testing.T) {
   dx: 0.315
   dy: 0.21
 `
-	var pixels []YaPixel
+	var pixels []yaPixel
 	err := yaml.Unmarshal([]byte(pixelsYAML), &pixels)
 	if err != nil {
 		log.Fatalf("Error:%v", err)
@@ -71,7 +71,7 @@ pixels:
     dx: 0.315
     dy: 0.21
 `
-	var step YaStep
+	var step yaStep
 
 	err := yaml.Unmarshal([]byte(stepYAML), &step)
 	if err != nil {
@@ -90,7 +90,7 @@ pixels:
 }
 
 type stepStruct struct {
-	Steps []YaStep
+	Steps []yaStep
 }
 
 func TestReadStepSeq(t *testing.T) {
@@ -122,7 +122,7 @@ steps:
 	// }
 }
 
-func checkDigits(t *testing.T, digits []YaDigit) error {
+func checkDigits(t *testing.T, digits []yaDigit) error {
 
 	if len(digits) != 2 {
 		return fmt.Errorf("Wanted 2 digits - Got %d", len(digits))
@@ -130,18 +130,18 @@ func checkDigits(t *testing.T, digits []YaDigit) error {
 
 	d0 := digits[0]
 
-	if d0.DeId != 100 ||
-		d0.ManuId != 235 ||
-		d0.ManuChannel != 16 ||
+	if d0.Deid != 100 ||
+		d0.Manuid != 235 ||
+		d0.Manuchannel != 16 ||
 		d0.Adc != 294 ||
 		d0.Charge != 4.661163 {
 		return fmt.Errorf("wrong 1st digit read in")
 	}
 	d1 := digits[1]
 
-	if d1.DeId != 100 ||
-		d1.ManuId != 235 ||
-		d1.ManuChannel != 61 ||
+	if d1.Deid != 100 ||
+		d1.Manuid != 235 ||
+		d1.Manuchannel != 61 ||
 		d1.Adc != 538 ||
 		d1.Charge != 36.61433 {
 		return fmt.Errorf("wrong 2nd digit read in")
@@ -162,7 +162,7 @@ func TestReadDigitSeq(t *testing.T) {
   adc: 538
   charge: 36.61433
 `
-	var digits []YaDigit
+	var digits []yaDigit
 
 	err := yaml.Unmarshal([]byte(digitsYAML), &digits)
 	if err != nil {
@@ -178,7 +178,7 @@ func TestReadDigitSeq(t *testing.T) {
 }
 
 type preStruct struct {
-	Pre YaPre
+	Pre yaPre
 }
 
 func TestReadPre(t *testing.T) {
@@ -215,8 +215,8 @@ pre:
 }
 
 type prePosChargeStruct struct {
-	Pre    YaPre
-	Pos    YaPos
+	Pre    yaPre
+	Pos    yaPos
 	Charge float32
 }
 
