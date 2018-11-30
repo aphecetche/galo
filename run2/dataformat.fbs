@@ -5,6 +5,7 @@ table Digit {
         deid:ushort;
         manuid:ushort;
         manuchannel:ubyte;
+        charge:float;
 }
 
 table ClusterPos {
@@ -20,6 +21,7 @@ table PreCluster {
 table Cluster {
   pre: PreCluster;
   pos: ClusterPos;
+  charge: float;
 }
 
 table Event {

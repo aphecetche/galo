@@ -32,6 +32,7 @@ var (
 		{splitClusters, "splitClusters"},
 		{dupClusters, "dupClusters"},
 		{strangeClusters, "strangeClusters"},
+		{chargeClusters, "chargeClusters"},
 	}
 )
 
