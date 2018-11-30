@@ -29,6 +29,10 @@ var (
         stroke: red;
         stroke-width: 0.005px;
         fill:rgba(255,255,255,0.0)
+		}
+.position {
+        fill: green;
+        stroke: none;
 }
 
 /* http://colorbrewer2.org/?type=sequential&scheme=YlGnBu&n=5 */
@@ -121,12 +125,16 @@ func Cluster(src io.Reader, dest io.Writer) {
 	pads = append(pads, bpads...)
 	pads = append(pads, nbpads...)
 
-	c, err := geo.NewContour(pads)
-	if err != nil {
-		panic(err)
-	}
+	// c, err := geo.NewContour(pads)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
+	// b := c.BBox()
+	var c geo.Contour
+	c = append(c, pads...)
 	b := c.BBox()
+
 	box, _ := geo.NewBBox(b.Xmin(), b.Ymin(), b.Xmax()+b.Width()*1.5, b.Ymax())
 
 	svg := geo.NewSVGWriter(1000, box, true)
@@ -151,6 +159,10 @@ func Cluster(src io.Reader, dest io.Writer) {
 
 	tpixels := geo.Translate(pixels, xshift, yshift)
 	convertPixelsToSVG(svg, tpixels)
+
+	svg.GroupStart("position")
+	svg.Circle(float64(clu.Pos.X), float64(clu.Pos.Y), 0.025)
+	svg.GroupEnd()
 
 	svg.Style(cssStyle)
 
