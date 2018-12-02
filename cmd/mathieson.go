@@ -10,7 +10,7 @@ var mathiesonCmd = &cobra.Command{
 	Use:   "mathieson",
 	Short: "plot some Mathieson functions",
 	Run: func(cmd *cobra.Command, args []string) {
-		mathieson.MakePlots("mathieson")
+		mathieson.Plotter.MakePlots("mathieson")
 	},
 }
 

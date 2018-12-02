@@ -4,29 +4,27 @@ import (
 	"fmt"
 	"image/color"
 	"math"
-	"os"
 
-	"github.com/aphecetche/galo/f1d"
-	"github.com/aphecetche/galo/util"
-	"github.com/aphecetche/pigiron/mapping"
+	"github.com/aphecetche/galo"
+	"github.com/aphecetche/galo/plot"
 	"go-hep.org/x/hep/hplot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 )
 
-func MakePlots(fname string) {
-	plot1D(fname)
+type MakePlotFunc func(fname string)
 
-	seg := mapping.NewSegmentation(100, true)
-	paduid, err := seg.FindPadByPosition(24, 24)
-	if err != nil {
-		panic("could not get pad")
-	}
-
-	mapping.PrintPad(os.Stdout, seg, paduid)
+func (f MakePlotFunc) MakePlots(fname string) {
+	f(fname)
 }
 
-func plotM1(p *hplot.Plot, dir byte, dist Dist1D, r, g, b uint8, dashes []vg.Length) {
+var Plotter = MakePlotFunc(MakePlots)
+
+func MakePlots(fname string) {
+	plot1D(fname)
+}
+
+func plotM1(p *hplot.Plot, dir byte, dist Mathieson1D, r, g, b uint8, dashes []vg.Length) {
 	f := plotter.NewFunction(func(x float64) float64 {
 		return dist.F(x)
 	})
@@ -37,7 +35,7 @@ func plotM1(p *hplot.Plot, dir byte, dist Dist1D, r, g, b uint8, dashes []vg.Len
 	p.Legend.Add(fmt.Sprintf("K3%c=%7.3f Pitch=%5.2f cm", dir, dist.K3(), dist.Pitch()), f)
 }
 
-func plotM2(p *hplot.Plot, dist Dist2D, r, g, b uint8) {
+func plotM2(p *hplot.Plot, dist Mathieson2D, r, g, b uint8) {
 	plotM1(p, 'x', dist.X, r, g, b, nil)
 	plotM1(p, 'y', dist.Y, r, g, b, []vg.Length{vg.Points(2), vg.Points(2)})
 }
@@ -46,7 +44,7 @@ func gausFunc(mu, sigma float64, r, g, b uint8) *plotter.Function {
 	f := plotter.NewFunction(func(x float64) float64 {
 		//c := math.Sqrt(2.0*math.Pi) * sigma
 		c := 1.0
-		return f1d.Gaus(x, 1.0/c, mu, sigma)
+		return galo.Gaus(x, 1.0/c, mu, sigma)
 	})
 	f.Color = color.RGBA{R: r, B: b, G: g, A: 255}
 	f.Samples = 1000
@@ -56,13 +54,13 @@ func gausFunc(mu, sigma float64, r, g, b uint8) *plotter.Function {
 func plot1D(fname string) {
 	p := hplot.New()
 
-	plotM2(p, St1, 255, 0, 0)
-	plotM2(p, St2345, 0, 0, 255)
+	plotM2(p, MathiesonSt1, 255, 0, 0)
+	plotM2(p, MathiesonSt2345, 0, 0, 255)
 
-	d := St1.X
+	d := MathiesonSt1.X
 
-	m7 := NewDist1D(0.25, 0.7)
-	m1 := NewDist1D(0.25, 1.0)
+	m7 := NewMathieson1D(0.25, 0.7)
+	m1 := NewMathieson1D(0.25, 1.0)
 
 	sigma := d.FWHM() / (2 * math.Sqrt(2*math.Log(2)))
 
@@ -93,5 +91,5 @@ func plot1D(fname string) {
 	// p.X.Label.Text = "λ"
 
 	p.Legend.Top = true
-	util.SavePlot(p, fname, "1d")
+	plot.SavePlot(p, fname, "1d")
 }

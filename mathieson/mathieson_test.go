@@ -1,8 +1,10 @@
-package mathieson
+package mathieson_test
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/aphecetche/galo/mathieson"
 )
 
 // test of Mathieson function
@@ -11,12 +13,12 @@ import (
 
 func TestMathieson(t *testing.T) {
 
-	m := St1
+	m := mathieson.MathiesonSt1
 
 	var x1 float64 = 0
 	var y1 float64 = 0
 	var x2 float64 = 1
 	var y2 float64 = 2
 
-	fmt.Println(m.Integral(x1, y1, x2, y2))
+	fmt.Println(m.Integrate(x1, y1, x2, y2))
 }

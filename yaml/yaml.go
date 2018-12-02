@@ -118,12 +118,12 @@ func (pre yaPre) getPadPolygons(bendingPlane bool) []geo.Polygon {
 	for i := 0; i < len(pre.Digits); i++ {
 		digit := pre.Digits[i]
 		deid := digit.Deid
-		manuid := int(digit.Manuid)
+		manuid := mapping.DualSampaID(digit.Manuid)
 		isBending := (manuid < 1024)
 		if isBending != bendingPlane {
 			continue
 		}
-		seg := segcache.Segmentation(int(deid), isBending)
+		seg := segcache.CathodeSegmentation(int(deid), isBending)
 		manuchannel := int(digit.Manuchannel)
 		paduid, err := seg.FindPadByFEE(manuid, manuchannel)
 		if seg.IsValid(paduid) == false || err != nil {

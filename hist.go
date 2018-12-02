@@ -1,4 +1,4 @@
-package hist
+package galo
 
 import (
 	"errors"

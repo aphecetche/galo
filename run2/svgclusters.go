@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/aphecetche/pigiron/geo"
+	"github.com/aphecetche/pigiron/mapping"
 	"github.com/aphecetche/pigiron/segcontour"
 )
 
@@ -23,18 +24,18 @@ func cluster2pads(ec *EventClusters, i int) ([]geo.Polygon, []geo.Polygon) {
 	for i := 0; i < pre.DigitsLength(); i++ {
 		pre.Digits(&digit, i)
 		deid := digit.Deid()
-		manuid := int(digit.Manuid())
+		manuid := mapping.DualSampaID(digit.Manuid())
 		isBending := (manuid < 1024)
-		seg := segcache.Segmentation(int(deid), isBending)
+		cseg := segcache.CathodeSegmentation(int(deid), isBending)
 		manuchannel := int(digit.Manuchannel())
-		paduid, err := seg.FindPadByFEE(manuid, manuchannel)
-		if seg.IsValid(paduid) == false || err != nil {
+		paduid, err := cseg.FindPadByFEE(manuid, manuchannel)
+		if cseg.IsValid(paduid) == false || err != nil {
 			log.Fatalf("got invalid pad for DE %v MANU %v CH %v : %v -> paduid %v", deid, manuid, manuchannel, err, paduid)
 		}
-		x := seg.PadPositionX(paduid)
-		y := seg.PadPositionY(paduid)
-		dx := seg.PadSizeX(paduid) / 2
-		dy := seg.PadSizeY(paduid) / 2
+		x := cseg.PadPositionX(paduid)
+		y := cseg.PadPositionY(paduid)
+		dx := cseg.PadSizeX(paduid) / 2
+		dy := cseg.PadSizeY(paduid) / 2
 		p := geo.Polygon{
 			{X: x - dx, Y: y - dy},
 			{X: x + dx, Y: y - dy},
@@ -70,8 +71,8 @@ func cluster2SVG(ec *EventClusters, i int, filename string, showFullDE bool) {
 	var deContour geo.Contour
 
 	if showFullDE {
-		seg := segcache.Segmentation(100, true)
-		deContour = segcontour.Contour(seg)
+		cseg := segcache.CathodeSegmentation(100, true)
+		deContour = segcontour.Contour(cseg)
 		b = deContour.BBox()
 	} else {
 		b = c.BBox()

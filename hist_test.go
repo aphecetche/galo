@@ -1,20 +1,21 @@
-package hist
+package galo_test
 
 import (
 	"testing"
 
+	"github.com/aphecetche/galo"
 	"go-hep.org/x/hep/hbook"
 )
 
 func TestEmptyCollection(t *testing.T) {
-	b := Collection{}
+	b := galo.Collection{}
 	if b.NObjects() != 0 {
 		t.Errorf("Want 0 objects - Got %d\n", b.NObjects())
 	}
 }
 
-func createCollection() Collection {
-	c := Collection{}
+func createCollection() galo.Collection {
+	c := galo.Collection{}
 	h := hbook.NewH1D(20, 0, 20)
 	h.Annotation()["name"] = "htest"
 	h.Fill(15, 15)
@@ -46,7 +47,7 @@ func TestRetrieveExistingObjectShouldNotFail(t *testing.T) {
 func TestRetrieveNonExistentObjectShouldReturnError(t *testing.T) {
 	c := createCollection()
 	_, err := c.Get("toto")
-	want := ErrNonExistingObject
+	want := galo.ErrNonExistingObject
 	if err != want {
 		t.Errorf("want error %s - got %s", want, err)
 	}

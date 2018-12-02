@@ -1,6 +1,11 @@
-package f1d
+package galo
 
 import "math"
+
+func Moyal(x, cst, mu, sigma float64) float64 {
+	v := (x - mu) / sigma
+	return cst * math.Exp(-0.5*v-0.5*math.Exp(-v))
+}
 
 var (
 	p1 = [5]float64{0.4259894875, -0.1249762550, 0.03984243700, -0.006298287635, 0.001511162253}
@@ -73,4 +78,13 @@ func landau_pdf(x, xi, x0 float64) float64 {
 		denlan = u * u * (1 + (a2[0]+a2[1]*u)*u)
 	}
 	return denlan / xi
+}
+
+func Levy(x, mu, sigma float64) float64 {
+	return math.Exp(-sigma/(2*(x-mu))) / math.Pow((x-mu), 1.5)
+}
+
+func Gaus(x, cst, mu, sigma float64) float64 {
+	v := (x - mu) / sigma
+	return cst * math.Exp(-0.5*v*v)
 }

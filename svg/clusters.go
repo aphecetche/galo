@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"io"
 	"log"
 	"strconv"
 
@@ -111,61 +110,61 @@ func convertPixelsToSVG(svg *geo.SVGWriter, pixels []geo.Polygon) {
 // 	svg.GroupEnd()
 // }
 
-func Cluster(src io.Reader, dest io.Writer) {
-
-	clu, err := newCluster(src)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var pads []geo.Polygon
-
-	bpads := clu.Pre.getPadPolygons(true)
-	nbpads := clu.Pre.getPadPolygons(false)
-	pads = append(pads, bpads...)
-	pads = append(pads, nbpads...)
-
-	// c, err := geo.NewContour(pads)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// b := c.BBox()
-	var c geo.Contour
-	c = append(c, pads...)
-	b := c.BBox()
-
-	box, _ := geo.NewBBox(b.Xmin(), b.Ymin(), b.Xmax()+b.Width()*1.5, b.Ymax())
-
-	svg := geo.NewSVGWriter(1000, box, true)
-
-	const bending bool = true
-	// show first non-bending and then bending so bending SVG objects
-	// are on top
-	convertPadsToSVG(svg, !bending, nbpads, nil)
-	convertPadsToSVG(svg, bending, bpads, nil)
-
-	pixels := clu.getPixelPolygons(0)
-	convertPixelsToSVG(svg, pixels)
-
-	xshift := b.Width() * 1.1
-	yshift := 0.0
-
-	tbpads := geo.Translate(bpads, xshift, yshift)
-	tnbpads := geo.Translate(nbpads, xshift, yshift)
-
-	convertPadsToSVG(svg, !bending, tnbpads, clu.getPadCharges(!bending))
-	convertPadsToSVG(svg, bending, tbpads, clu.getPadCharges(bending))
-
-	tpixels := geo.Translate(pixels, xshift, yshift)
-	convertPixelsToSVG(svg, tpixels)
-
-	svg.GroupStart("position")
-	svg.Circle(float64(clu.Pos.X), float64(clu.Pos.Y), 0.025)
-	svg.GroupEnd()
-
-	svg.Style(cssStyle)
-
-	svg.WriteHTML(dest)
-
-}
+// func Cluster(src io.Reader, dest io.Writer) {
+//
+// 	clu, err := newCluster(src)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+//
+// 	var pads []geo.Polygon
+//
+// 	bpads := clu.Pre.getPadPolygons(true)
+// 	nbpads := clu.Pre.getPadPolygons(false)
+// 	pads = append(pads, bpads...)
+// 	pads = append(pads, nbpads...)
+//
+// 	// c, err := geo.NewContour(pads)
+// 	// if err != nil {
+// 	// 	panic(err)
+// 	// }
+//
+// 	// b := c.BBox()
+// 	var c geo.Contour
+// 	c = append(c, pads...)
+// 	b := c.BBox()
+//
+// 	box, _ := geo.NewBBox(b.Xmin(), b.Ymin(), b.Xmax()+b.Width()*1.5, b.Ymax())
+//
+// 	svg := geo.NewSVGWriter(1000, box, true)
+//
+// 	const bending bool = true
+// 	// show first non-bending and then bending so bending SVG objects
+// 	// are on top
+// 	convertPadsToSVG(svg, !bending, nbpads, nil)
+// 	convertPadsToSVG(svg, bending, bpads, nil)
+//
+// 	pixels := clu.getPixelPolygons(0)
+// 	convertPixelsToSVG(svg, pixels)
+//
+// 	xshift := b.Width() * 1.1
+// 	yshift := 0.0
+//
+// 	tbpads := geo.Translate(bpads, xshift, yshift)
+// 	tnbpads := geo.Translate(nbpads, xshift, yshift)
+//
+// 	convertPadsToSVG(svg, !bending, tnbpads, clu.getPadCharges(!bending))
+// 	convertPadsToSVG(svg, bending, tbpads, clu.getPadCharges(bending))
+//
+// 	tpixels := geo.Translate(pixels, xshift, yshift)
+// 	convertPixelsToSVG(svg, tpixels)
+//
+// 	svg.GroupStart("position")
+// 	svg.Circle(float64(clu.Pos.X), float64(clu.Pos.Y), 0.025)
+// 	svg.GroupEnd()
+//
+// 	svg.Style(cssStyle)
+//
+// 	svg.WriteHTML(dest)
+//
+// }

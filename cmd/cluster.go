@@ -7,7 +7,7 @@ import (
 // clusterCmd represents the clusters command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
-	Short: "Inspect clusters",
+	Short: "Various operations related to clusters",
 }
 
 var maxEvents int

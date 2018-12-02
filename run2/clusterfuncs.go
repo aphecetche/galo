@@ -5,7 +5,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/aphecetche/galo/mathieson"
 	"github.com/aphecetche/pigiron/mapping"
 )
 
@@ -26,82 +25,6 @@ type ClusterPosFunc struct {
 type ClusterSelFunc struct {
 	F    func(*EventClusters, int) bool
 	Name string
-}
-
-// Integrate charge originating at (x,y) over surface of given pad
-func chargeIntegration(deid, manuid uint16, manuch uint8, x, y float32) float64 {
-	var isBending bool = (manuid < 1024)
-	seg := segcache.Segmentation(int(deid), isBending)
-	paduid, err := seg.FindPadByFEE(int(manuid), int(manuch))
-	if err != nil {
-		panic(err)
-	}
-	padx := seg.PadPositionX(paduid)
-	pady := seg.PadPositionY(paduid)
-	paddx := seg.PadSizeX(paduid)
-	paddy := seg.PadSizeY(paduid)
-	x1 := padx - paddx/2.0 - float64(x)
-	y1 := pady - paddy/2.0 - float64(y)
-	x2 := x1 + paddx
-	y2 := y1 + paddy
-	if deid < 500 {
-		return mathieson.St1.Integral(x1, y1, x2, y2)
-	}
-	return mathieson.St2345.Integral(x1, y1, x2, y2)
-}
-
-func computeDigitCharge(dig Digit, x, y float32) float64 {
-	deid := dig.Deid()
-	manuid := dig.Manuid()
-	manuch := dig.Manuchannel()
-	return chargeIntegration(deid, manuid, manuch, x, y)
-}
-
-type ValueChecker interface {
-	IsBad() bool
-	IsReallyBad() bool
-	IsExtremelyBad() bool
-}
-
-type ValueCheck struct {
-	want float64
-	got  float64
-	msg  string
-}
-
-func newValueCheck(msg string, a, b float64) *ValueCheck {
-	return &ValueCheck{want: a, got: b, msg: msg}
-}
-
-func (v *ValueCheck) Ratio() float64 {
-	return v.want / v.got
-}
-
-func (v *ValueCheck) IsBad() bool {
-	return v.Ratio() < 0.7 || v.Ratio() > 1.5
-}
-
-func (v *ValueCheck) IsReallyBad() bool {
-	return v.Ratio() < 0.5 || v.Ratio() > 2.0
-}
-
-func (v *ValueCheck) IsExtremelyBad() bool {
-	return v.Ratio() < 0.25 || v.Ratio() > 100.0
-}
-
-func (v *ValueCheck) String() string {
-	ratio := v.Ratio()
-	var ratioMsg string
-	if v.IsBad() {
-		ratioMsg = "!"
-	}
-	if v.IsReallyBad() {
-		ratioMsg = "!!"
-	}
-	if v.IsExtremelyBad() {
-		ratioMsg = "!!!"
-	}
-	return fmt.Sprintf("%s orig=%7.2f recalc=%7.2f ratio=%10.2f %s", v.msg, v.want, v.got, ratio, ratioMsg)
 }
 
 func chargeClusters(ec *EventClusters, i int) bool {
@@ -198,11 +121,11 @@ func cog(pre *PreCluster, weight WeightModel) (float64, float64) {
 	for i := 0; i < pre.DigitsLength(); i++ {
 		pre.Digits(&digit, i)
 		deid := digit.Deid()
-		manuid := int(digit.Manuid())
-		seg := segcache.Segmentation(int(deid), manuid < 1024)
+		manuid := mapping.DualSampaID(digit.Manuid())
+		cseg := segcache.CathodeSegmentation(int(deid), manuid < 1024)
 		manuchannel := int(digit.Manuchannel())
-		paduid, err := seg.FindPadByFEE(manuid, manuchannel)
-		if seg.IsValid(paduid) == false || err != nil {
+		paduid, err := cseg.FindPadByFEE(manuid, manuchannel)
+		if cseg.IsValid(paduid) == false || err != nil {
 			log.Fatalf("got invalid pad for DE %v MANU %v CH %v : %v -> paduid %v", deid, manuid, manuchannel, err, paduid)
 		}
 		var w float64
@@ -213,8 +136,8 @@ func cog(pre *PreCluster, weight WeightModel) (float64, float64) {
 		}
 		sumw += w
 
-		x += seg.PadPositionX(paduid) * w
-		y += seg.PadPositionY(paduid) * w
+		x += cseg.PadPositionX(paduid) * w
+		y += cseg.PadPositionY(paduid) * w
 	}
 	x /= sumw
 	y /= sumw

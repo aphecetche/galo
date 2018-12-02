@@ -9,9 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aphecetche/galo/f1d"
-	"github.com/aphecetche/galo/hist"
-	"github.com/aphecetche/galo/util"
+	"github.com/aphecetche/galo"
+	galoplot "github.com/aphecetche/galo/plot"
 	"go-hep.org/x/hep/fit"
 	"go-hep.org/x/hep/hbook"
 	"go-hep.org/x/hep/hplot"
@@ -36,9 +35,9 @@ var (
 	}
 )
 
-func createHistogramCollection() *hist.Collection {
+func createHistogramCollection() *galo.Collection {
 
-	hc := hist.NewCollection("plot")
+	hc := galo.NewCollection("plot")
 
 	for _, cluselfunc := range ClusterSelFuncs {
 		hname := "/" + cluselfunc.Name + "/multiplicity"
@@ -54,9 +53,9 @@ func createHistogramCollection() *hist.Collection {
 	return hc
 }
 
-func fillHistogramCollection(ec *EventClusters, hc *hist.Collection, cc *hist.CounterCollection) {
+func fillHistogramCollection(ec *EventClusters, hc *galo.Collection, cc *galo.CounterCollection) {
 
-	//here hc should be hl <=> hist.Library <=> map of path -> hist.Collection
+	//here hc should be hl <=> galo.Library <=> map of path -> galo.Collection
 	var clu Cluster
 
 	for i := 0; i < ec.E.ClustersLength(); i++ {
@@ -101,7 +100,7 @@ func PlotClusters(r io.ReaderAt, maxEvents int, outputFileName string) {
 
 	hc := createHistogramCollection()
 
-	cc := hist.NewCounterCollection()
+	cc := galo.NewCounterCollection()
 
 	ForEachEvent(r, func(ec *EventClusters) {
 		cc.Incr("events")
@@ -109,7 +108,7 @@ func PlotClusters(r io.ReaderAt, maxEvents int, outputFileName string) {
 	}, maxEvents)
 
 	plotHistogramCollection(hc, outputFileName)
-	saveFunction(outputFileName)
+	galoplot.SaveFunction(outputFileName)
 	fmt.Println(cc)
 }
 
@@ -185,7 +184,7 @@ func plotResidual(h *hbook.H1D, outputFileName string) {
 		fit.Func1D{
 			F: func(x float64, params []float64) float64 {
 				// return f1d.Gaus(x, params[0], params[1], params[2])
-				return f1d.Moyal(x, params[0], params[1], params[2])
+				return galo.Moyal(x, params[0], params[1], params[2])
 				// return params[0] * f1d.Landau(x, params[1], params[2])
 			},
 			N: 3,
@@ -205,7 +204,7 @@ func plotResidual(h *hbook.H1D, outputFileName string) {
 
 	f := plotter.NewFunction(func(x float64) float64 {
 		// return gaus(x, res.X[0], res.X[1], res.X[2])
-		return f1d.Moyal(x, res.X[0], res.X[1], res.X[2])
+		return galo.Moyal(x, res.X[0], res.X[1], res.X[2])
 	})
 	if res.X[1] > 0 {
 		h.Ann["mu"] = res.X[1]
@@ -216,16 +215,16 @@ func plotResidual(h *hbook.H1D, outputFileName string) {
 	p.Add(f)
 
 	p.X.Max = 1.0
-	util.SavePlot(p, outputFileName, h.Name())
+	galoplot.SavePlot(p, outputFileName, h.Name())
 }
 
-func createResidualHisto(hc *hist.Collection, name string) {
+func createResidualHisto(hc *galo.Collection, name string) {
 	h := hbook.NewH1D(128, 0, 1)
 	h.Annotation()["name"] = name
 	hc.Add(h)
 }
 
-func plotHistogramCollection(hc *hist.Collection, outputFileName string) {
+func plotHistogramCollection(hc *galo.Collection, outputFileName string) {
 	for _, h := range hc.H1Ds() {
 		if h == nil || h.Entries() == 0 {
 			continue

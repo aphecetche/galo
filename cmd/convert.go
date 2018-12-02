@@ -7,8 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/aphecetche/galo/convert"
+	"github.com/aphecetche/galo"
 	"github.com/spf13/cobra"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // convertCmd represents the convert command
@@ -20,6 +21,7 @@ var convertCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer from.Close()
 		if len(dest) == 0 {
 			fmt.Println("src", src)
 			dest = strings.Replace(src, path.Ext(src), ".html", -1)
@@ -29,7 +31,17 @@ var convertCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		convert.Cluster(from, to)
+		defer to.Close()
+		input := yaml.NewDecoder(from)
+		var cluster galo.Cluster
+		for {
+			err := input.Decode(&cluster)
+			if err != nil {
+				break
+			}
+		}
+		// output := svg.NewEncoder(io.NewWriter(to))
+		// io.Copy(input, output)
 	},
 }
 
