@@ -1,10 +1,12 @@
-package convert
+package yaml
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 
+	"github.com/aphecetche/galo"
 	"github.com/aphecetche/pigiron/geo"
 	"github.com/aphecetche/pigiron/mapping"
 	yaml "gopkg.in/yaml.v2"
@@ -51,17 +53,34 @@ type yaCluster struct {
 	Steps  []yaStep `yaml:"steps,omitempty`
 }
 
-func newCluster(src io.Reader) (*yaCluster, error) {
-	data, err := ioutil.ReadAll(src)
-	if err != nil {
-		return nil, err
+type yamlClusterDecoder struct {
+	r io.Reader
+}
+
+func Toto() {
+}
+
+func NewClusterDecoder(src io.Reader) *yamlClusterDecoder {
+	return &yamlClusterDecoder{r: src}
+}
+
+func (ya *yamlClusterDecoder) Decode(clu *galo.Cluster) error {
+	if clu == nil {
+		return fmt.Errorf("Cannot decode into nil")
 	}
-	var cluster yaCluster
-	err = yaml.Unmarshal([]byte(data), &cluster)
+	data, err := ioutil.ReadAll(ya.r)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &cluster, nil
+	var yaclu yaCluster
+	err = yaml.Unmarshal([]byte(data), &yaclu)
+	if err != nil {
+		return err
+	}
+	(*clu).Pos.X = float64(yaclu.Pos.X)
+	(*clu).Pos.Y = float64(yaclu.Pos.Y)
+	(*clu).Pos.Z = float64(yaclu.Pos.Z)
+	return nil
 }
 
 func rectangle(x, y, dx, dy float64) geo.Polygon {

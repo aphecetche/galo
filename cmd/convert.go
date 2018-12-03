@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/aphecetche/galo"
+	"github.com/aphecetche/galo/yaml"
 	"github.com/spf13/cobra"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // convertCmd represents the convert command
@@ -32,11 +32,12 @@ var convertCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		defer to.Close()
-		input := yaml.NewDecoder(from)
+		input := yaml.NewClusterDecoder(from)
 		var cluster galo.Cluster
 		for {
 			err := input.Decode(&cluster)
 			if err != nil {
+				log.Fatal(err.Error())
 				break
 			}
 		}

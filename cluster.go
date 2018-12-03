@@ -32,3 +32,9 @@ type ClusterPositioner interface {
 	// Position (re)computes the position of the cluster.
 	Position(clu Cluster) (x, y float64)
 }
+
+type ClusterDecoder interface {
+	// Decode reads the next cluster from its input and stores it
+	// in the value pointed by clu.
+	Decode(clu *Cluster) error
+}
