@@ -1,11 +1,40 @@
-package convert
+package svg
 
 import (
+	"io"
 	"log"
 	"strconv"
 
+	"github.com/aphecetche/galo"
 	"github.com/aphecetche/pigiron/geo"
+	"github.com/aphecetche/pigiron/mapping"
 )
+
+type svgClusterEncoder struct {
+	w    io.Writer
+	svgw geo.SVGWriter
+}
+
+func NewClusterEncoder(dest io.Writer) *svgClusterEncoder {
+	return &svgClusterEncoder{w: dest}
+}
+
+// Encode writes the encoding of clu to the stream.
+func (enc *svgClusterEncoder) Encode(clu *galo.Cluster) error {
+	seg := mapping.NewSegmentation(clu.Pre.DeId)
+	enc.svgw.GroupStart("bending-pads")
+	for _, d := range clu.Pre.Digits {
+		paduid := mapping.PadUID(d.ID)
+		if !seg.IsBendingPad(paduid) {
+			continue
+		}
+		b := mapping.ComputePadBBox(seg, paduid)
+		enc.svgw.Rect(b.Xmin(), b.Ymin(), b.Width(), b.Height())
+	}
+	enc.svgw.GroupEnd()
+	enc.svgw.WriteHTML(enc.w)
+	return nil
+}
 
 var (
 	cssStyle string = `

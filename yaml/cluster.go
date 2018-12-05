@@ -57,20 +57,23 @@ type yamlClusterDecoder struct {
 	r io.Reader
 }
 
-func Toto() {
-}
-
 func NewClusterDecoder(src io.Reader) *yamlClusterDecoder {
 	return &yamlClusterDecoder{r: src}
 }
 
+// Decode reads the next YAML-encoded value of a cluster from its input
+// and stores it in the value pointed to by clu.
 func (ya *yamlClusterDecoder) Decode(clu *galo.Cluster) error {
 	if clu == nil {
 		return fmt.Errorf("Cannot decode into nil")
 	}
 	data, err := ioutil.ReadAll(ya.r)
+	fmt.Println("len(data)=", len(data))
 	if err != nil {
 		return err
+	}
+	if len(data) == 0 {
+		return fmt.Errorf("no more data")
 	}
 	var yaclu yaCluster
 	err = yaml.Unmarshal([]byte(data), &yaclu)
@@ -80,6 +83,15 @@ func (ya *yamlClusterDecoder) Decode(clu *galo.Cluster) error {
 	(*clu).Pos.X = float64(yaclu.Pos.X)
 	(*clu).Pos.Y = float64(yaclu.Pos.Y)
 	(*clu).Pos.Z = float64(yaclu.Pos.Z)
+	for _, yd := range yaclu.Pre.Digits {
+		var isBending bool = yd.Manuid < 1024
+		cseg := segcache.CathodeSegmentation(yd.Deid, isBending)
+		paduid, err := cseg.FindPadByFEE(mapping.DualSampaID(yd.Manuid), yd.Manuchannel)
+		if err != nil {
+			log.Fatalf("could not get paduid")
+		}
+		(*clu).Pre.Digits = append((*clu).Pre.Digits, galo.Digit{ID: int(paduid), Q: float64(yd.Charge)})
+	}
 	return nil
 }
 

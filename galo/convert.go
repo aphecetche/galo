@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/aphecetche/galo"
+	"github.com/aphecetche/galo/svg"
 	"github.com/aphecetche/galo/yaml"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +34,7 @@ var convertCmd = &cobra.Command{
 		}
 		defer to.Close()
 		input := yaml.NewClusterDecoder(from)
+		output := svg.NewClusterEncoder(to)
 		var cluster galo.Cluster
 		for {
 			err := input.Decode(&cluster)
@@ -40,9 +42,14 @@ var convertCmd = &cobra.Command{
 				log.Fatal(err.Error())
 				break
 			}
+			fmt.Println("decoded cluster")
+			err = output.Encode(&cluster)
+			if err != nil {
+				log.Fatal(err.Error())
+				break
+			}
+			fmt.Println("encoded cluster")
 		}
-		// output := svg.NewEncoder(io.NewWriter(to))
-		// io.Copy(input, output)
 	},
 }
 

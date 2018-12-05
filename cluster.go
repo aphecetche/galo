@@ -38,3 +38,8 @@ type ClusterDecoder interface {
 	// in the value pointed by clu.
 	Decode(clu *Cluster) error
 }
+
+type ClusterEncoder interface {
+	// Encode writes the encoding of clu to the stream.
+	Encode(clu *Cluster) error
+}

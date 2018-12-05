@@ -67,20 +67,11 @@ func cluster2SVG(ec *EventClusters, i int, filename string, showFullDE bool) {
 		panic(err)
 	}
 
-	var b geo.BBox
-	var deContour geo.Contour
+	svg := geo.NewSVGWriter(1024)
 
 	if showFullDE {
 		cseg := segcache.CathodeSegmentation(100, true)
-		deContour = segcontour.Contour(cseg)
-		b = deContour.BBox()
-	} else {
-		b = c.BBox()
-	}
-
-	svg := geo.SVGWriter{Width: 1024, BBox: b}
-
-	if showFullDE {
+		deContour := segcontour.Contour(cseg)
 		svg.GroupStart("de")
 		svg.Contour(&deContour)
 		svg.GroupEnd()

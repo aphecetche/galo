@@ -15,28 +15,20 @@ func (f ChargeSpreadFunc) SpreadCharge(q, x, y float64) []galo.Digit {
 	return f(q, x, y)
 }
 
-func padBox(cseg mapping.CathodeSegmentation, paduid mapping.PadUID) (lowerLeft, topRight galo.XY) {
-
-	px := cseg.PadPositionX(paduid)
-	py := cseg.PadPositionY(paduid)
-	dx := cseg.PadSizeX(paduid)
-	dy := cseg.PadSizeY(paduid)
-	return galo.XY{px - dx/2.0, py - dy/2.0}, galo.XY{px + dx/2.0, py + dy/2.0}
-}
-
 func NewMathiesonChargeSpreader(deid int) ChargeSpreadFunc {
-	cseg := mapping.NewCathodeSegmentation(deid, true)
+	seg := mapping.NewSegmentation(deid)
 	integ := NewChargeIntegrator(deid)
 	return func(q, x, y float64) []galo.Digit {
 		var digits galo.Digits
-		deid := cseg.DetElemID()
-		paduid, err := cseg.FindPadByPosition(x, y)
+		deid := seg.DetElemID()
+		pb, pnb, err := seg.FindPadPairByPosition(x, y)
 		if err != nil {
 			log.Fatalf("Could not find at (%v,%v)  DE %v", x, y, deid)
 		}
-		neighbours := cseg.GetNeighbours(paduid)
+		neighbours := seg.GetNeighbours(pb)
+		neighbours = append(neighbours, seg.GetNeighbours(pnb)...)
 		for _, nei := range neighbours {
-			neighbours = append(neighbours, cseg.GetNeighbours(nei)...)
+			neighbours = append(neighbours, seg.GetNeighbours(nei)...)
 		}
 		pids := make(map[mapping.PadUID]struct{})
 		for _, nei := range neighbours {
@@ -44,8 +36,7 @@ func NewMathiesonChargeSpreader(deid int) ChargeSpreadFunc {
 		}
 
 		for paduid, _ := range pids {
-			lowerLeft, topRight := padBox(cseg, paduid)
-			dq := galo.ChargeOverBox(x, y, integ, lowerLeft, topRight)
+			dq := galo.ChargeOverBox(x, y, integ, mapping.ComputePadBBox(seg, paduid))
 			if dq < minRelCharge {
 				continue
 			}
