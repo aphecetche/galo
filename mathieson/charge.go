@@ -7,19 +7,17 @@ import (
 	"github.com/aphecetche/pigiron/mapping"
 )
 
-const minRelCharge float64 = 1E-4
-
 type ChargeSpreadFunc func(q, x, y float64) []galo.Digit
 
 func (f ChargeSpreadFunc) SpreadCharge(q, x, y float64) []galo.Digit {
 	return f(q, x, y)
 }
 
-func NewMathiesonChargeSpreader(deid int) ChargeSpreadFunc {
+func NewMathiesonChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeSpreadFunc {
 	seg := mapping.NewSegmentation(deid)
 	integ := NewChargeIntegrator(deid)
 	return func(q, x, y float64) []galo.Digit {
-		var digits galo.Digits
+		var digits []galo.Digit
 		deid := seg.DetElemID()
 		pb, pnb, err := seg.FindPadPairByPosition(x, y)
 		if err != nil {

@@ -1,17 +1,24 @@
 package galo
 
+import "github.com/aphecetche/pigiron/mapping"
+
 type ClusterPos struct {
 	X float64
 	Y float64
-	Z float64
 }
+
+type ClusterCharge float64
 
 type Cluster struct {
 	Pre PreCluster
 	Pos ClusterPos
+	Q   ClusterCharge
 }
 
-type Clusters []Cluster
+type DEClusters struct {
+	DeID     mapping.DEID
+	Clusters []Cluster
+}
 
 type Clusterizer interface {
 	// Clusterize converts a precluster into one or several clusters.
@@ -33,13 +40,15 @@ type ClusterPositioner interface {
 	Position(clu Cluster) (x, y float64)
 }
 
-type ClusterDecoder interface {
-	// Decode reads the next cluster from its input and stores it
+type DEClustersDecoder interface {
+	// Decode reads the next DEClusters from its input and stores it
 	// in the value pointed by clu.
-	Decode(clu *Cluster) error
+	Decode(declu *DEClusters) error
+	Close()
 }
 
-type ClusterEncoder interface {
+type DEClustersEncoder interface {
 	// Encode writes the encoding of clu to the stream.
-	Encode(clu *Cluster) error
+	Encode(declu *DEClusters) error
+	Close()
 }

@@ -5,8 +5,7 @@ import (
 )
 
 type PreCluster struct {
-	DeId   int
-	Digits Digits
+	DigitGroup
 }
 
 func (pre PreCluster) Charge() float64 {

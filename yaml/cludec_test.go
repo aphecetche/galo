@@ -131,8 +131,8 @@ func checkDigits(t *testing.T, digits []yaDigit) error {
 	d0 := digits[0]
 
 	if d0.Deid != 100 ||
-		d0.Manuid != 235 ||
-		d0.Manuchannel != 16 ||
+		d0.Dsid != 235 ||
+		d0.Dsch != 16 ||
 		d0.Adc != 294 ||
 		d0.Charge != 4.661163 {
 		return fmt.Errorf("wrong 1st digit read in")
@@ -140,8 +140,8 @@ func checkDigits(t *testing.T, digits []yaDigit) error {
 	d1 := digits[1]
 
 	if d1.Deid != 100 ||
-		d1.Manuid != 235 ||
-		d1.Manuchannel != 61 ||
+		d1.Dsid != 235 ||
+		d1.Dsch != 61 ||
 		d1.Adc != 538 ||
 		d1.Charge != 36.61433 {
 		return fmt.Errorf("wrong 2nd digit read in")
@@ -152,13 +152,13 @@ func checkDigits(t *testing.T, digits []yaDigit) error {
 func TestReadDigitSeq(t *testing.T) {
 	digitsYAML := `
 - deid: 100
-  manuid: 235
-  manuchannel: 16
+  dsid: 235
+  dsch: 16
   adc: 294
   charge: 4.661163
 - deid: 100
-  manuid: 235
-  manuchannel: 61
+  dsid: 235
+  dsch: 61
   adc: 538
   charge: 36.61433
 `
@@ -184,17 +184,18 @@ type preStruct struct {
 func TestReadPre(t *testing.T) {
 	preYAML := `
 pre:
-  digits:
-   - deid: 100
-     manuid: 235
-     manuchannel: 16
-     adc: 294
-     charge: 4.661163
-   - deid: 100
-     manuid: 235
-     manuchannel: 61
-     adc: 538
-     charge: 36.61433
+  digitgroup:
+    digits:
+     - deid: 100
+       dsid: 235
+       dsch: 16
+       adc: 294
+       charge: 4.661163
+     - deid: 100
+       dsid: 235
+       dsch: 61
+       adc: 538
+       charge: 36.61433
 `
 	var pre preStruct
 
@@ -203,10 +204,10 @@ pre:
 		log.Fatalf("Error:%v", err)
 	}
 
-	if len(pre.Pre.Digits) != 2 {
-		t.Errorf("Want 2 digits - got %d", len(pre.Pre.Digits))
+	if len(pre.Pre.DigitGroup.Digits) != 2 {
+		t.Errorf("Want 2 digits - got %d", len(pre.Pre.DigitGroup.Digits))
 	}
-	err = checkDigits(t, pre.Pre.Digits)
+	err = checkDigits(t, pre.Pre.DigitGroup.Digits)
 
 	if err != nil {
 		t.Errorf(err.Error())
@@ -223,21 +224,21 @@ type prePosChargeStruct struct {
 func TestReadPrePosCharge(t *testing.T) {
 	preposchargeYAML := `
 pre:
-  digits:
-   - deid: 100
-     manuid: 235
-     manuchannel: 16
-     adc: 294
-     charge: 4.661163
-   - deid: 100
-     manuid: 235
-     manuchannel: 61
-     adc: 538
-     charge: 36.61433
+  digitgroup:
+    digits:
+     - deid: 100
+       dsid: 235
+       dsch: 16
+       adc: 294
+       charge: 4.661163
+     - deid: 100
+       dsid: 235
+       dsch: 61
+       adc: 538
+       charge: 36.61433
 pos:
   x: 25.45887
   y: 74.50821
-  z: -530.4827
 charge: 57.69108
 `
 	var preposcharge prePosChargeStruct
@@ -247,18 +248,17 @@ charge: 57.69108
 		log.Fatalf("Error:%v", err)
 	}
 
-	if len(preposcharge.Pre.Digits) != 2 {
-		t.Errorf("Want 2 digits - got %d", len(preposcharge.Pre.Digits))
+	if len(preposcharge.Pre.DigitGroup.Digits) != 2 {
+		t.Errorf("Want 2 digits - got %d", len(preposcharge.Pre.DigitGroup.Digits))
 	}
-	err = checkDigits(t, preposcharge.Pre.Digits)
+	err = checkDigits(t, preposcharge.Pre.DigitGroup.Digits)
 
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
 	if preposcharge.Pos.X != 25.45887 ||
-		preposcharge.Pos.Y != 74.50821 ||
-		preposcharge.Pos.Z != -530.4827 {
+		preposcharge.Pos.Y != 74.50821 {
 		t.Errorf("preposcharge Pos is incorrect")
 	}
 	if preposcharge.Charge != 57.69108 {

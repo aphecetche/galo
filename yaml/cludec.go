@@ -12,47 +12,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-var (
-	segcache mapping.SegCache
-)
-
-type yaDigit struct {
-	Deid        int
-	Manuid      int
-	Manuchannel int
-	Adc         int
-	Charge      float32
-}
-
-type yaPixel struct {
-	X  float32
-	Y  float32
-	DX float32
-	DY float32
-}
-
-type yaStep struct {
-	Pixels []yaPixel
-	Ncalls int `yaml:"ncalls,omitempty`
-}
-
-type yaPre struct {
-	Digits []yaDigit
-}
-
-type yaPos struct {
-	X float32
-	Y float32
-	Z float32
-}
-
-type yaCluster struct {
-	Pre    yaPre
-	Pos    yaPos
-	Charge float32
-	Steps  []yaStep `yaml:"steps,omitempty`
-}
-
 type yamlClusterDecoder struct {
 	r io.Reader
 }
@@ -61,38 +20,69 @@ func NewClusterDecoder(src io.Reader) *yamlClusterDecoder {
 	return &yamlClusterDecoder{r: src}
 }
 
-// Decode reads the next YAML-encoded value of a cluster from its input
+var _ galo.DEClustersDecoder = (*yamlClusterDecoder)(nil)
+
+// Decode reads the next YAML-encoded value of a DECluster from its input
 // and stores it in the value pointed to by clu.
-func (ya *yamlClusterDecoder) Decode(clu *galo.Cluster) error {
-	if clu == nil {
+func (ya *yamlClusterDecoder) Decode(declu *galo.DEClusters) error {
+	if declu == nil {
 		return fmt.Errorf("Cannot decode into nil")
 	}
 	data, err := ioutil.ReadAll(ya.r)
-	fmt.Println("len(data)=", len(data))
 	if err != nil {
 		return err
 	}
 	if len(data) == 0 {
 		return fmt.Errorf("no more data")
 	}
-	var yaclu yaCluster
-	err = yaml.Unmarshal([]byte(data), &yaclu)
+	var ydeclu yaDEClusters
+	err = yaml.Unmarshal([]byte(data), &ydeclu)
 	if err != nil {
 		return err
 	}
-	(*clu).Pos.X = float64(yaclu.Pos.X)
-	(*clu).Pos.Y = float64(yaclu.Pos.Y)
-	(*clu).Pos.Z = float64(yaclu.Pos.Z)
-	for _, yd := range yaclu.Pre.Digits {
-		var isBending bool = yd.Manuid < 1024
-		cseg := segcache.CathodeSegmentation(yd.Deid, isBending)
-		paduid, err := cseg.FindPadByFEE(mapping.DualSampaID(yd.Manuid), yd.Manuchannel)
-		if err != nil {
-			log.Fatalf("could not get paduid")
-		}
-		(*clu).Pre.Digits = append((*clu).Pre.Digits, galo.Digit{ID: int(paduid), Q: float64(yd.Charge)})
+	(*declu).DeID = mapping.DEID(ydeclu.DeID)
+	seg := galo.SegCache.Segmentation((*declu).DeID)
+	for _, yc := range ydeclu.Clusters {
+		pre := preCluster(yc.Pre, seg)
+		pos := clusterPos(yc.Pos)
+		clu := galo.Cluster{Pre: pre, Pos: pos, Q: galo.ClusterCharge(yc.Charge)}
+		(*declu).Clusters = append((*declu).Clusters, clu)
 	}
 	return nil
+}
+
+func (ya *yamlClusterDecoder) Close() {
+}
+
+func digit(yd yaDigit, finder mapping.PadByFEEFinder) galo.Digit {
+	id, err := finder.FindPadByFEE(mapping.DualSampaID(yd.Dsid), mapping.DualSampaChannelID(yd.Dsch))
+	if err != nil {
+		panic(err)
+	}
+	return galo.Digit{
+		ID: int(id),
+		Q:  float64(yd.Charge),
+	}
+}
+
+func preCluster(ypre yaPre, finder mapping.PadByFEEFinder) galo.PreCluster {
+	var pre galo.PreCluster
+	var dg galo.DigitGroup
+
+	dg.RefTime = ypre.DigitGroup.RefTime
+
+	for _, yd := range ypre.DigitGroup.Digits {
+		dg.Digits = append(dg.Digits, digit(yd, finder))
+	}
+	pre.DigitGroup = dg
+	return pre
+}
+
+func clusterPos(ypos yaPos) galo.ClusterPos {
+	var pos galo.ClusterPos
+	pos.X = float64(ypos.X)
+	pos.Y = float64(ypos.Y)
+	return pos
 }
 
 func rectangle(x, y, dx, dy float64) geo.Polygon {
@@ -132,9 +122,9 @@ func (clu yaCluster) getPadCharges(bendingPlane bool) []float32 {
 
 func (pre yaPre) getPadCharges(bendingPlane bool) []float32 {
 	var charges []float32
-	for i := 0; i < len(pre.Digits); i++ {
-		digit := pre.Digits[i]
-		manuid := int(digit.Manuid)
+	for i := 0; i < len(pre.DigitGroup.Digits); i++ {
+		digit := pre.DigitGroup.Digits[i]
+		manuid := int(digit.Dsid)
 		isBending := (manuid < 1024)
 		if isBending != bendingPlane {
 			continue
@@ -146,17 +136,17 @@ func (pre yaPre) getPadCharges(bendingPlane bool) []float32 {
 
 func (pre yaPre) getPadPolygons(bendingPlane bool) []geo.Polygon {
 	var polygons []geo.Polygon
-	for i := 0; i < len(pre.Digits); i++ {
-		digit := pre.Digits[i]
+	for i := 0; i < len(pre.DigitGroup.Digits); i++ {
+		digit := pre.DigitGroup.Digits[i]
 		deid := digit.Deid
-		manuid := mapping.DualSampaID(digit.Manuid)
+		manuid := mapping.DualSampaID(digit.Dsid)
 		isBending := (manuid < 1024)
 		if isBending != bendingPlane {
 			continue
 		}
-		seg := segcache.CathodeSegmentation(int(deid), isBending)
-		manuchannel := int(digit.Manuchannel)
-		paduid, err := seg.FindPadByFEE(manuid, manuchannel)
+		seg := galo.SegCache.CathodeSegmentation(mapping.DEID(deid), isBending)
+		manuchannel := int(digit.Dsch)
+		paduid, err := seg.FindPadByFEE(mapping.DualSampaID(manuid), mapping.DualSampaChannelID(manuchannel))
 		if seg.IsValid(paduid) == false || err != nil {
 			log.Fatalf("got invalid pad for DE %v MANU %v CH %v : %v -> paduid %v", deid, manuid, manuchannel, err, paduid)
 		}

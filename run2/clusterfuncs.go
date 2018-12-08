@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/aphecetche/galo"
 	"github.com/aphecetche/pigiron/mapping"
 )
 
@@ -122,9 +123,9 @@ func cog(pre *PreCluster, weight WeightModel) (float64, float64) {
 		pre.Digits(&digit, i)
 		deid := digit.Deid()
 		manuid := mapping.DualSampaID(digit.Manuid())
-		cseg := segcache.CathodeSegmentation(int(deid), manuid < 1024)
+		cseg := galo.SegCache.CathodeSegmentation(mapping.DEID(deid), manuid < 1024)
 		manuchannel := int(digit.Manuchannel())
-		paduid, err := cseg.FindPadByFEE(manuid, manuchannel)
+		paduid, err := cseg.FindPadByFEE(mapping.DualSampaID(manuid), mapping.DualSampaChannelID(manuchannel))
 		if cseg.IsValid(paduid) == false || err != nil {
 			log.Fatalf("got invalid pad for DE %v MANU %v CH %v : %v -> paduid %v", deid, manuid, manuchannel, err, paduid)
 		}
@@ -143,5 +144,3 @@ func cog(pre *PreCluster, weight WeightModel) (float64, float64) {
 	y /= sumw
 	return x, y
 }
-
-var segcache mapping.SegCache

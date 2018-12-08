@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/aphecetche/galo"
 	"github.com/aphecetche/pigiron/geo"
 	"github.com/aphecetche/pigiron/mapping"
 	"github.com/aphecetche/pigiron/segcontour"
@@ -26,9 +27,9 @@ func cluster2pads(ec *EventClusters, i int) ([]geo.Polygon, []geo.Polygon) {
 		deid := digit.Deid()
 		manuid := mapping.DualSampaID(digit.Manuid())
 		isBending := (manuid < 1024)
-		cseg := segcache.CathodeSegmentation(int(deid), isBending)
+		cseg := galo.SegCache.CathodeSegmentation(mapping.DEID(deid), isBending)
 		manuchannel := int(digit.Manuchannel())
-		paduid, err := cseg.FindPadByFEE(manuid, manuchannel)
+		paduid, err := cseg.FindPadByFEE(mapping.DualSampaID(manuid), mapping.DualSampaChannelID(manuchannel))
 		if cseg.IsValid(paduid) == false || err != nil {
 			log.Fatalf("got invalid pad for DE %v MANU %v CH %v : %v -> paduid %v", deid, manuid, manuchannel, err, paduid)
 		}
@@ -70,7 +71,7 @@ func cluster2SVG(ec *EventClusters, i int, filename string, showFullDE bool) {
 	svg := geo.NewSVGWriter(1024)
 
 	if showFullDE {
-		cseg := segcache.CathodeSegmentation(100, true)
+		cseg := galo.SegCache.CathodeSegmentation(100, true)
 		deContour := segcontour.Contour(cseg)
 		svg.GroupStart("de")
 		svg.Contour(&deContour)
