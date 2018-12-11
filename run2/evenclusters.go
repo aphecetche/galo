@@ -5,6 +5,9 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/aphecetche/galo"
+	"github.com/aphecetche/pigiron/mapping"
 )
 
 type EventClusters struct {
@@ -13,6 +16,23 @@ type EventClusters struct {
 	dupIndex   []int
 	isSplit    []bool
 	splitIndex []int
+}
+
+func GetDEClusters(e *Event) *galo.DEClusters {
+	var clusters []galo.Cluster
+	var ci Cluster
+	for i := 0; i < e.ClustersLength(); i++ {
+		e.Clusters(&ci, i)
+		clu := galo.Cluster{
+			Q: galo.ClusterCharge(ci.Charge()),
+		}
+		clusters = append(clusters, clu)
+	}
+	deid := mapping.DEID(42)
+	return &galo.DEClusters{
+		DeID:     deid,
+		Clusters: clusters,
+	}
 }
 
 func GetEventClusters(e *Event) *EventClusters {
