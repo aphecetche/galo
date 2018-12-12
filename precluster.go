@@ -2,6 +2,7 @@ package galo
 
 import (
 	"fmt"
+	"strings"
 )
 
 type PreCluster struct {
@@ -24,7 +25,7 @@ func (pre PreCluster) String() string {
 	var s string
 	s += fmt.Sprintf("Q=%7.3f %3d pads\n", pre.Charge(), len(pre.Digits))
 	for _, d := range pre.Digits {
-		s += d.String() + "\n"
+		s += fmt.Sprintf("%s%v\n", strings.Repeat(" ", 10), d)
 	}
 	return s
 }

@@ -38,7 +38,7 @@ func NewMathiesonChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeS
 			if dq < minRelCharge {
 				continue
 			}
-			digits = append(digits, galo.Digit{ID: int(paduid), Q: q * dq})
+			digits = append(digits, galo.Digit{ID: paduid, Q: q * dq})
 		}
 		return digits
 	}

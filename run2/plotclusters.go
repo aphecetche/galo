@@ -3,7 +3,6 @@ package run2
 import (
 	"fmt"
 	"image/color"
-	"io"
 	"log"
 	"math"
 	"os"
@@ -19,33 +18,44 @@ import (
 	"gonum.org/v1/plot/plotter"
 )
 
+// var (
+// 	ClusterPosFuncs = []ClusterPosFunc{
+// 		// {cogWithSquaredWeight, "w2"},
+// 		{cogNoWeight, "cog"},
+// 		// {cogWithRegularWeight, "cogW"},
+// 	}
+// 	ClusterSelFuncs = []ClusterSelFunc{
+// 		{allClusters, "allClusters"},
+// 		{simpleClusters, "simpleClusters"},
+// 		{splitClusters, "splitClusters"},
+// 		{dupClusters, "dupClusters"},
+// 		{strangeClusters, "strangeClusters"},
+// 		{chargeClusters, "chargeClusters"},
+// 	}
+// )
+//
+
 var (
-	ClusterPosFuncs = []ClusterPosFunc{
-		// {cogWithSquaredWeight, "w2"},
-		{cogNoWeight, "cog"},
-		// {cogWithRegularWeight, "cogW"},
-	}
-	ClusterSelFuncs = []ClusterSelFunc{
-		{allClusters, "allClusters"},
-		{simpleClusters, "simpleClusters"},
-		{splitClusters, "splitClusters"},
-		{dupClusters, "dupClusters"},
-		{strangeClusters, "strangeClusters"},
-		{chargeClusters, "chargeClusters"},
-	}
+	cluSelectors   []galo.ClusterSelector
+	cluPositioners []galo.ClusterPositioner
 )
+
+func init() {
+	cluPositioners = append(cluPositioners,
+		galo.ClusterPositionerCOG{Wmod: galo.NoWeight})
+}
 
 func createHistogramCollection() *galo.Collection {
 
 	hc := galo.NewCollection("plot")
 
-	for _, cluselfunc := range ClusterSelFuncs {
-		hname := "/" + cluselfunc.Name + "/multiplicity"
+	for _, cluselfunc := range cluSelectors {
+		hname := "/" + cluselfunc.Name() + "/multiplicity"
 		h := hbook.NewH1D(500, 0, 500)
 		h.Annotation()["name"] = hname
 		hc.Add(h)
-		for _, cluposfunc := range ClusterPosFuncs {
-			hname := "/" + cluselfunc.Name + "/residual_" + cluposfunc.Name
+		for _, cluposfunc := range cluPositioners {
+			hname := "/" + cluselfunc.Name() + "/residual_" + cluposfunc.Name()
 			createResidualHisto(hc, hname)
 		}
 	}
@@ -53,30 +63,27 @@ func createHistogramCollection() *galo.Collection {
 	return hc
 }
 
-func fillHistogramCollection(ec *EventClusters, hc *galo.Collection, cc *galo.CounterCollection) {
+func fillHistogramCollection(declu *galo.DEClusters, hc *galo.Collection, cc *galo.CounterCollection) {
 
 	//here hc should be hl <=> galo.Library <=> map of path -> galo.Collection
-	var clu Cluster
 
-	for i := 0; i < ec.E.ClustersLength(); i++ {
+	for _, clu := range declu.Clusters {
 
-		ec.E.Clusters(&clu, i)
-
-		for _, cluselfunc := range ClusterSelFuncs {
-			if cluselfunc.F(ec, i) == false {
+		for _, cluselfunc := range cluSelectors {
+			if cluselfunc.Select(clu) == false {
 				continue
 			}
-			(*cc).Incr(cluselfunc.Name)
+			(*cc).Incr(cluselfunc.Name())
 
-			hname := "/" + cluselfunc.Name + "/multiplicity"
+			hname := "/" + cluselfunc.Name() + "/multiplicity"
 			h, err := hc.H1D(hname)
 			if err != nil {
 				log.Fatalf("could not get histogram %s\n", hname)
 			}
-			h.Fill(float64(clu.Pre(nil).DigitsLength()), 1.0)
+			h.Fill(float64(clu.Pre.NofPads()), 1.0)
 
-			for _, cluposfunc := range ClusterPosFuncs {
-				res := getClusterResidual(ec, i, cluposfunc)
+			for _, cluposfunc := range cluPositioners {
+				res := galo.ClusterResidual(clu, cluposfunc)
 				// here should instead get a "collection" with all the
 				// histos/numbers/drawings I'd want to fill
 				// for this cluster :
@@ -85,7 +92,7 @@ func fillHistogramCollection(ec *EventClusters, hc *galo.Collection, cc *galo.Co
 				// - H2 positions
 				// - SVG <=> canvas ?
 				//
-				hname := "/" + cluselfunc.Name + "/residual_" + cluposfunc.Name
+				hname := "/" + cluselfunc.Name() + "/residual_" + cluposfunc.Name()
 				h, err := hc.H1D(hname)
 				if err != nil {
 					log.Fatalf("could not get histogram %s\n", hname)
@@ -96,30 +103,24 @@ func fillHistogramCollection(ec *EventClusters, hc *galo.Collection, cc *galo.Co
 	}
 }
 
-func PlotClusters(r io.ReaderAt, maxEvents int, outputFileName string) {
+func PlotClusters(dec galo.DEClustersDecoder, maxEvents int, outputFileName string) {
 
 	hc := createHistogramCollection()
 
 	cc := galo.NewCounterCollection()
 
-	ForEachEvent(r, func(ec *EventClusters) {
+	var declu galo.DEClusters
+	for {
+		err := dec.Decode(&declu)
+		if err != nil {
+			break
+		}
 		cc.Incr("events")
-		fillHistogramCollection(ec, hc, cc)
-	}, maxEvents)
-
+		fillHistogramCollection(&declu, hc, cc)
+	}
 	plotHistogramCollection(hc, outputFileName)
 	galoplot.SaveFunction(outputFileName)
 	fmt.Println(cc)
-}
-
-func getClusterResidual(ec *EventClusters, i int, cluposfunc ClusterPosFunc) float64 {
-	var clu Cluster
-	ec.E.Clusters(&clu, i)
-	x, y := cluposfunc.F(&clu)
-	pos := clu.Pos(nil)
-	dx := x - float64(pos.X())
-	dy := y - float64(pos.Y())
-	return math.Sqrt(dx*dx + dy*dy)
 }
 
 type ClipScale struct {

@@ -60,7 +60,7 @@ func digit(yd yaDigit, finder mapping.PadByFEEFinder) galo.Digit {
 		panic(err)
 	}
 	return galo.Digit{
-		ID: int(id),
+		ID: id,
 		Q:  float64(yd.Charge),
 	}
 }

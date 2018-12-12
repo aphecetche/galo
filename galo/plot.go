@@ -17,7 +17,9 @@ var plotCmd = &cobra.Command{
 			panic(err)
 		}
 		defer f.Close()
-		run2.PlotClusters(f, maxEvents, outputFileName)
+		dec := NewClusterDecoder(f, args[0])
+		defer dec.Close()
+		run2.PlotClusters(dec, maxEvents, outputFileName)
 	},
 }
 var silent bool

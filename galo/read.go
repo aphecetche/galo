@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aphecetche/galo/run2"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +17,9 @@ var readCmd = &cobra.Command{
 			panic(err)
 		}
 		defer f.Close()
-		nevents := run2.ForEachEvent(f, func(*run2.EventClusters) {}, maxEvents)
+
+		nevents := 0
+		// nevents := run2.ForEachEvent(f, func(*run2.EventClusters) {}, maxEvents)
 		fmt.Println(nevents, " events processed")
 	},
 }
