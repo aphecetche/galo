@@ -8,6 +8,10 @@ type PreCluster struct {
 	DigitGroup
 }
 
+func (pre PreCluster) NofPads() int {
+	return len(pre.Digits)
+}
+
 func (pre PreCluster) Charge() float64 {
 	var q float64
 	for _, d := range pre.Digits {

@@ -9,18 +9,16 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type PadFEELocatorFunc func(deid mapping.DEID) mapping.PadFEELocator
-
 type yamlClusterEncoder struct {
 	w          io.Writer
 	yenc       *yaml.Encoder
-	padlocfunc PadFEELocatorFunc
+	padlocfunc mapping.PadFEELocatorFunc
 }
 
 // NewClusterEncoder returns a new encoder that writes to dest.
 // The returned encoder should be closed after use to flush
 // of its data to dest.
-func NewClusterEncoder(dest io.Writer, padlocfunc PadFEELocatorFunc) *yamlClusterEncoder {
+func NewClusterEncoder(dest io.Writer, padlocfunc mapping.PadFEELocatorFunc) *yamlClusterEncoder {
 	return &yamlClusterEncoder{w: dest,
 		yenc:       goyaml.NewEncoder(dest),
 		padlocfunc: padlocfunc}

@@ -18,17 +18,39 @@ type EventClusters struct {
 	splitIndex []int
 }
 
-func GetDEClusters(e *Event) *galo.DEClusters {
+func GetDEClusters(e *Event, padfinderfunc mapping.PadByFEEFinderFunc) *galo.DEClusters {
 	var clusters []galo.Cluster
 	var ci Cluster
+	var deid mapping.DEID
 	for i := 0; i < e.ClustersLength(); i++ {
 		e.Clusters(&ci, i)
+		prei := ci.Pre(nil)
+		var pre galo.PreCluster
+		var d Digit
+		for j := 0; j < prei.DigitsLength(); j++ {
+			prei.Digits(&d, j)
+			if deid == 0 {
+				deid = mapping.DEID(d.Deid())
+			} else {
+				if deid != mapping.DEID(d.Deid()) {
+					panic("mixing detection element ids")
+				}
+			}
+			padfinder := padfinderfunc(deid)
+			id, err := padfinder.FindPadByFEE(mapping.DualSampaID(d.Manuid()),
+				mapping.DualSampaChannelID(d.Manuchannel()))
+			if err != nil {
+				panic(err)
+			}
+			pre.Digits = append(pre.Digits, galo.Digit{ID: int(id), Q: float64(d.Charge())})
+		}
 		clu := galo.Cluster{
-			Q: galo.ClusterCharge(ci.Charge()),
+			Q:   galo.ClusterCharge(ci.Charge()),
+			Pos: galo.ClusterPos{X: float64(ci.Pos(nil).X()), Y: float64(ci.Pos(nil).Y())},
+			Pre: pre,
 		}
 		clusters = append(clusters, clu)
 	}
-	deid := mapping.DEID(42)
 	return &galo.DEClusters{
 		DeID:     deid,
 		Clusters: clusters,

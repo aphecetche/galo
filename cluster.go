@@ -1,6 +1,10 @@
 package galo
 
-import "github.com/aphecetche/pigiron/mapping"
+import (
+	"fmt"
+
+	"github.com/aphecetche/pigiron/mapping"
+)
 
 type ClusterPos struct {
 	X float64
@@ -51,4 +55,14 @@ type DEClustersEncoder interface {
 	// Encode writes the encoding of clu to the stream.
 	Encode(declu *DEClusters) error
 	Close()
+}
+
+func (pos ClusterPos) String() string {
+	return fmt.Sprintf("X %7.2f Y %7.2f", pos.X, pos.Y)
+}
+func (clu Cluster) String() string {
+	s := fmt.Sprintf(" Q=%7.2f", clu.Q)
+	s += fmt.Sprintf(" Pos=%v", clu.Pos)
+	s += fmt.Sprintf(" Pre=%v", clu.Pre)
+	return s
 }

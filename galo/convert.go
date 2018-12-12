@@ -8,9 +8,11 @@ import (
 	"strings"
 
 	"github.com/aphecetche/galo"
+	"github.com/aphecetche/galo/run2"
 	"github.com/aphecetche/galo/svg"
 	"github.com/aphecetche/galo/yaml"
 	"github.com/aphecetche/pigiron/mapping"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +29,9 @@ func isHMTL(filename string) bool {
 }
 
 func isRun2(filename string) bool {
-	return false
+	//FIXME: that's a very poor way of checking the file
+	//is actually containing flatbuffers ...
+	return strings.ToLower(path.Ext(filename)) == ".dat"
 }
 
 // convertCmd represents the convert command
@@ -55,15 +59,29 @@ var convertCmd = &cobra.Command{
 			log.Fatalf("Could not get encoder for output file %v", input)
 		}
 		defer to.Close()
-		_ = convert(from, to)
-		// TODO: handle err (in particular EOF which is not really an
-		// error but the happy ending...
+		n := 0
+		for {
+			err = convert(from, to)
+			if err != nil {
+				break
+			}
+			n++
+			if n > maxEvents {
+				break
+			}
+		}
 	},
 }
 
 func NewClusterDecoder(r io.Reader, filename string) galo.DEClustersDecoder {
 	if isYAML(filename) {
 		return yaml.NewClusterDecoder(r)
+	}
+	if isRun2(filename) {
+		return run2.NewClusterDecoder(r.(io.ReaderAt),
+			func(deid mapping.DEID) mapping.PadByFEEFinder {
+				return galo.SegCache.Segmentation(deid)
+			}, 0)
 	}
 	return nil
 }
@@ -91,11 +109,14 @@ func convert(from galo.DEClustersDecoder, to galo.DEClustersEncoder) error {
 	for {
 		err := from.Decode(&clusters)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Decoding error")
+		}
+		if len(clusters.Clusters) == 0 {
+			continue
 		}
 		err = to.Encode(&clusters)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Encoding error")
 		}
 		return nil
 	}

@@ -3,24 +3,32 @@ package run2_test
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"math"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/aphecetche/galo"
 	"github.com/aphecetche/galo/run2"
+	"github.com/aphecetche/pigiron/mapping"
+	_ "github.com/aphecetche/pigiron/mapping/impl4"
 	flatbuffers "github.com/google/flatbuffers/go"
+	"github.com/pkg/errors"
 )
 
 func createPos(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	run2.ClusterPosStart(builder)
 	run2.ClusterPosAddX(builder, float32(n)*0.1)
 	run2.ClusterPosAddY(builder, float32(n)*0.2)
-	run2.ClusterPosAddZ(builder, float32(n)*0.3)
+	run2.ClusterPosAddZ(builder, float32(n)*0.3) // to be deprecated
 	return run2.ClusterPosEnd(builder)
 }
 
 func createDigit(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	run2.DigitStart(builder)
-	run2.DigitAddAdc(builder, uint16(n))
+	run2.DigitAddAdc(builder, uint16(n)) // not tested
+	run2.DigitAddCharge(builder, float32(n)+0.42)
 	run2.DigitAddDeid(builder, 100)
 	run2.DigitAddManuid(builder, 100+uint16(n))
 	run2.DigitAddManuchannel(builder, byte(n))
@@ -29,8 +37,8 @@ func createDigit(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 
 func createDigits(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	var digits []flatbuffers.UOffsetT
-	for i := 0; i < n; i++ {
-		digits = append(digits, createDigit(i, builder))
+	for i := 1; i <= n; i++ {
+		digits = append(digits, createDigit(n-i+1, builder))
 	}
 	run2.PreClusterStartDigitsVector(builder, n)
 	for _, d := range digits {
@@ -43,7 +51,6 @@ func createPre(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	digits := createDigits(n, builder)
 	run2.PreClusterStart(builder)
 	run2.PreClusterAddDigits(builder, digits)
-	run2.PreClusterAddDigits(builder, 0)
 	return run2.PreClusterEnd(builder)
 }
 
@@ -59,8 +66,8 @@ func createCluster(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 
 func createClusters(n int, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	var clusters []flatbuffers.UOffsetT
-	for i := 0; i < n; i++ {
-		clusters = append(clusters, createCluster(n, builder))
+	for i := 1; i <= n; i++ {
+		clusters = append(clusters, createCluster(n-i+1, builder))
 	}
 	run2.EventStartClustersVector(builder, n)
 	for _, c := range clusters {
@@ -100,7 +107,7 @@ func createFakeEvents(decoderBufferSize int, nperdec int) ([]byte, int) {
 	i := 0
 	for {
 		builder.Reset()
-		event := createEvent(i, builder)
+		event := createEvent(i+1, builder)
 		builder.Finish(event)
 		eventBuf := builder.FinishedBytes()
 		binary.LittleEndian.PutUint32(size, uint32(len(eventBuf)))
@@ -115,16 +122,84 @@ func createFakeEvents(decoderBufferSize int, nperdec int) ([]byte, int) {
 	return buf.Bytes(), i
 }
 
+func compareFloats(msg string, got, want float64) error {
+	if math.Abs((got-want)/want) > 1E-6 {
+		return fmt.Errorf("Want %s=%7.2f Got %7.2f", msg, want, got)
+	}
+	return nil
+}
+func compareInts(msg string, got, want int) error {
+	if got != want {
+		return fmt.Errorf("Want %s=%v Got %v", msg, want, got)
+	}
+	return nil
+}
+
+func clustersAsExpected(declu *galo.DEClusters, nbase int) error {
+	if len(declu.Clusters) != nbase {
+		return fmt.Errorf("wrong number of clusters")
+	}
+	if declu.DeID != 100 {
+		return fmt.Errorf("Want Deid %d - Got %d", 100, declu.DeID)
+	}
+	n := 1
+	padloc := galo.SegCache.Segmentation(100)
+	for _, clu := range declu.Clusters {
+		msg := fmt.Sprintf("Cluster %d", n)
+
+		err := compareFloats("Q", float64(clu.Q), 100.0*float64(n)+0.42)
+		if err != nil {
+			return errors.Wrap(err, msg)
+		}
+		err = compareFloats("X", float64(clu.Pos.X), 0.1*float64(n))
+		if err != nil {
+			return errors.Wrap(err, msg)
+		}
+		err = compareFloats("Y", float64(clu.Pos.Y), 0.2*float64(n))
+		if err != nil {
+			return errors.Wrap(err, msg)
+		}
+
+		err = compareInts("NofPads", clu.Pre.NofPads(), n)
+		if err != nil {
+			return errors.Wrap(err, msg)
+		}
+
+		for i := 0; i < clu.Pre.NofPads(); i++ {
+			msg := fmt.Sprintf("Cluster %d Digit %d", n, i)
+			d := clu.Pre.Digits[i]
+			err := compareFloats("Q", float64(d.Q), float64(i+1)+0.42)
+			if err != nil {
+				return errors.Wrap(err, msg)
+			}
+			paduid := mapping.PadUID(d.ID)
+			dsid := padloc.PadDualSampaID(paduid)
+			err = compareInts("DsId", int(dsid), 100+i+1)
+			if err != nil {
+				return errors.Wrap(err, msg)
+			}
+			dsch := padloc.PadDualSampaChannel(paduid)
+			err = compareInts("DsCh", int(dsch), i+1)
+			if err != nil {
+				return errors.Wrap(err, msg)
+			}
+		}
+
+		n++
+	}
+	return nil
+}
+
 func TestCreateEvents(t *testing.T) {
 
 	var tests = []struct {
 		decsize int
 		nperdec int
 		want    int
-	}{{1024, 3, 7},
-		{1024, 6, 9},
-		{2048, 6, 12}}
-
+	}{{1024, 3, 6},
+		{1024, 6, 8},
+		{2048, 6, 11}}
+	loop := 0
 	for _, tp := range tests {
 		// generate a flatbuffer containing enough Events
 		// to get bigger than the decoder reading buffer size (decsize),
@@ -132,18 +207,25 @@ func TestCreateEvents(t *testing.T) {
 		// all our clusters
 		buf, n := createFakeEvents(tp.decsize, tp.nperdec)
 
+		f, _ := os.Create("toto" + strconv.Itoa(loop) + ".dat")
+		f.Write(buf)
+		f.Close()
+		loop++
 		if n != tp.want {
 			t.Errorf("Want %v events. Got %d", tp.want, n)
 		}
 
 		br := bytes.NewReader(buf)
-		dec := run2.NewClusterDecoder(br, tp.decsize)
+		dec := run2.NewClusterDecoder(br,
+			func(deid mapping.DEID) mapping.PadByFEEFinder {
+				return galo.SegCache.Segmentation(deid)
+			}, tp.decsize)
 
 		nread := 0
 
 		ndec := 20
+		var declusters galo.DEClusters
 		for {
-			var declusters galo.DEClusters
 			err := dec.Decode(&declusters)
 			if err != nil {
 				break
@@ -160,6 +242,10 @@ func TestCreateEvents(t *testing.T) {
 		}
 		if n != nread {
 			t.Errorf("Wanted to read %d clusters. Got %d", n, nread)
+		}
+
+		if err := clustersAsExpected(&declusters, nread); err != nil {
+			t.Errorf("Clusters not as expected for nread=%d err=%v", nread, err.Error())
 		}
 	}
 }
