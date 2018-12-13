@@ -28,8 +28,9 @@ func SamePreCluster(a, b PreCluster) bool {
 	if a.NofPads() != b.NofPads() {
 		return false
 	}
-	var da, db Digit
 	for i := 0; i < a.NofPads(); i++ {
+		da := a.Digits[i]
+		db := b.Digits[i]
 		if !SameDigitLocation(da, db) {
 			return false
 		}
@@ -40,9 +41,10 @@ func SamePreCluster(a, b PreCluster) bool {
 // ShareDigits returns true if both precluster have at least
 // one digit in common
 func ShareDigits(a, b PreCluster) bool {
-	var da, db Digit
 	for i := 0; i < a.NofPads(); i++ {
+		da := a.Digits[i]
 		for j := 0; j < b.NofPads(); j++ {
+			db := b.Digits[j]
 			if SameDigitLocation(da, db) {
 				return true
 			}

@@ -37,6 +37,44 @@ func NewClusterDecoder(src io.ReaderAt, padfinderfunc mapping.PadByFEEFinderFunc
 		padfinderfunc: padfinderfunc}
 }
 
+func getDEClusters(e *Event, padfinderfunc mapping.PadByFEEFinderFunc) *galo.DEClusters {
+	var clusters []galo.Cluster
+	var ci Cluster
+	var deid mapping.DEID
+	for i := 0; i < e.ClustersLength(); i++ {
+		e.Clusters(&ci, i)
+		prei := ci.Pre(nil)
+		var pre galo.PreCluster
+		var d Digit
+		for j := 0; j < prei.DigitsLength(); j++ {
+			prei.Digits(&d, j)
+			if deid == 0 {
+				deid = mapping.DEID(d.Deid())
+			} else {
+				if deid != mapping.DEID(d.Deid()) {
+					panic("mixing detection element ids")
+				}
+			}
+			padfinder := padfinderfunc(deid)
+			id, err := padfinder.FindPadByFEE(mapping.DualSampaID(d.Manuid()),
+				mapping.DualSampaChannelID(d.Manuchannel()))
+			if err != nil {
+				panic(err)
+			}
+			pre.Digits = append(pre.Digits, galo.Digit{ID: id, Q: float64(d.Charge())})
+		}
+		clu := galo.Cluster{
+			Q:   galo.ClusterCharge(ci.Charge()),
+			Pos: galo.ClusterPos{X: float64(ci.Pos(nil).X()), Y: float64(ci.Pos(nil).Y())},
+			Pre: pre,
+		}
+		clusters = append(clusters, clu)
+	}
+	return &galo.DEClusters{
+		DeID:     deid,
+		Clusters: clusters,
+	}
+}
 func buf2DEClusters(buf []byte, padfinderfunc mapping.PadByFEEFinderFunc) ([]galo.DEClusters, int64) {
 	var off int64
 	var declu []galo.DEClusters
@@ -50,7 +88,7 @@ func buf2DEClusters(buf []byte, padfinderfunc mapping.PadByFEEFinderFunc) ([]gal
 			break
 		}
 		event := GetRootAsEvent(buf[pstart:pend], 0)
-		dc := GetDEClusters(event, padfinderfunc)
+		dc := getDEClusters(event, padfinderfunc)
 		declu = append(declu, *dc)
 		off = pend
 	}

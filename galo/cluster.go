@@ -11,10 +11,14 @@ var clusterCmd = &cobra.Command{
 }
 
 var maxEvents int
+var cluSelArg string
+var firstEvent int
 
 func init() {
 	rootCmd.AddCommand(clusterCmd)
 
 	// persistent flag is for this command and all its sub-commands
 	clusterCmd.PersistentFlags().IntVarP(&maxEvents, "max-events", "m", 100000000, "Maximum number of events to process")
+	clusterCmd.PersistentFlags().StringVarP(&cluSelArg, "select", "s", "any", "Clusters to be used")
+	clusterCmd.PersistentFlags().IntVarP(&firstEvent, "first-event", "a", 0, "First event to consider")
 }

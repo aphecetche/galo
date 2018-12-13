@@ -36,7 +36,7 @@ import (
 //
 
 var (
-	cluSelectors   []galo.ClusterSelector
+	tcSelectors    []galo.TaggedClusterSelector
 	cluPositioners []galo.ClusterPositioner
 )
 
@@ -49,7 +49,7 @@ func createHistogramCollection() *galo.Collection {
 
 	hc := galo.NewCollection("plot")
 
-	for _, cluselfunc := range cluSelectors {
+	for _, cluselfunc := range tcSelectors {
 		hname := "/" + cluselfunc.Name() + "/multiplicity"
 		h := hbook.NewH1D(500, 0, 500)
 		h.Annotation()["name"] = hname
@@ -63,14 +63,14 @@ func createHistogramCollection() *galo.Collection {
 	return hc
 }
 
-func fillHistogramCollection(declu *galo.DEClusters, hc *galo.Collection, cc *galo.CounterCollection) {
+func fillHistogramCollection(tc *galo.TaggedClusters, hc *galo.Collection, cc *galo.CounterCollection) {
 
 	//here hc should be hl <=> galo.Library <=> map of path -> galo.Collection
 
-	for _, clu := range declu.Clusters {
+	for i, clu := range tc.Clusters() {
 
-		for _, cluselfunc := range cluSelectors {
-			if cluselfunc.Select(clu) == false {
+		for _, cluselfunc := range tcSelectors {
+			if cluselfunc.Select(tc, i) == false {
 				continue
 			}
 			(*cc).Incr(cluselfunc.Name())
@@ -112,11 +112,12 @@ func PlotClusters(dec galo.DEClustersDecoder, maxEvents int, outputFileName stri
 	var declu galo.DEClusters
 	for {
 		err := dec.Decode(&declu)
+		tc := galo.GetTaggedClusters(&declu)
 		if err != nil {
 			break
 		}
 		cc.Incr("events")
-		fillHistogramCollection(&declu, hc, cc)
+		fillHistogramCollection(tc, hc, cc)
 	}
 	plotHistogramCollection(hc, outputFileName)
 	galoplot.SaveFunction(outputFileName)

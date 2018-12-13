@@ -20,9 +20,3 @@ type DigitGroup struct {
 func (d Digit) String() string {
 	return fmt.Sprintf("ID %6d Q %7.3f", d.ID, d.Q)
 }
-
-func (d Digit) HumanReadable(padloc mapping.PadFEELocator) string {
-	dsid := padloc.PadDualSampaID(d.ID)
-	dsch := padloc.PadDualSampaChannel(d.ID)
-	return fmt.Sprintf("%v DS %4d CH %2d", d, dsid, dsch)
-}

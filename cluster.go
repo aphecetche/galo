@@ -41,14 +41,6 @@ type Clusterizer interface {
 	Clusterize(pre PreCluster) []Cluster
 }
 
-// ClusterSelector selects or discard a cluster based on some criteria.
-type ClusterSelector interface {
-	// Select decides if a cluster is to be kept or not.
-	Select(clu Cluster) bool
-	// Name of the selector.
-	Name() string
-}
-
 // ClusterCharger computes the position of a cluster.
 type ClusterCharger interface {
 	// Charge (re)computes the charge of the cluster.
@@ -94,12 +86,3 @@ func (clu Cluster) String() string {
 	s += fmt.Sprintf(" Pre=%v", clu.Pre)
 	return s
 }
-
-// // String gets a string representation of the DEClusters.
-// func (declu DEClusters) String() string {
-// 	s := fmt.Sprintf("DE %4d - %d clusters", declu.DeID, len(declu.Clusters))
-// 	for _, c := range declu.Clusters {
-// 		s += fmt.Sprintf("%v", c)
-// 	}
-// 	return s
-// }
