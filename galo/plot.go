@@ -1,9 +1,9 @@
 package main
 
 import (
-	"os"
+	"strconv"
 
-	"github.com/aphecetche/galo/run2"
+	"github.com/aphecetche/galo"
 	"github.com/spf13/cobra"
 )
 
@@ -12,19 +12,24 @@ var plotCmd = &cobra.Command{
 	Use:   "plot",
 	Short: "Plot clusters",
 	Run: func(cmd *cobra.Command, args []string) {
-		f, err := os.Open(args[0])
-		if err != nil {
-			panic(err)
+		hc := galo.CreateHistogramCollection()
+		positioner := galo.NewDEClusterPositioner(positionerArg)
+		LoopOverFile(args[0], cluSelArg, func(index int, tc *galo.TaggedClusters, selected []int) {
+			galo.FillHistogramCollection(tc, selected, hc, positioner)
+		})
+		plots := galo.PlotHistogramCollection(hc)
+		for i, p := range plots {
+			galo.SavePlot(p, outputFileName, "toto"+strconv.Itoa(i))
 		}
-		defer f.Close()
-		dec := NewClusterDecoder(f, args[0])
-		defer dec.Close()
-		run2.PlotClusters(dec, maxEvents, outputFileName)
 	},
 }
-var silent bool
+
+var quiet bool
+
+var positionerArg string
 
 func init() {
 	clusterCmd.AddCommand(plotCmd)
-	plotCmd.Flags().BoolVarP(&silent, "silent", "s", false, "no text output")
+	plotCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "no text output")
+	plotCmd.Flags().StringVarP(&positionerArg, "positioner", "p", "COG", "Positioner to use")
 }

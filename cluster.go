@@ -2,8 +2,6 @@ package galo
 
 import (
 	"fmt"
-
-	"github.com/aphecetche/pigiron/mapping"
 )
 
 // Cluster represents a MCH cluster.
@@ -27,14 +25,6 @@ type ClusterPos struct {
 // of a cluster.
 type ClusterCharge float64
 
-// DEClusters represents a group of clusters for one detection element.
-type DEClusters struct {
-	// DeID is the detection element id of those clusters.
-	DeID mapping.DEID
-	// Clusters is the list of clusters of this group.
-	Clusters []Cluster
-}
-
 // Clusterizer wraps the single Clusterizer method.
 type Clusterizer interface {
 	// Clusterize converts a precluster into one or several clusters.
@@ -47,31 +37,6 @@ type ClusterCharger interface {
 	Charge(clu Cluster) float64
 	// Name of the charger
 	Name() string
-}
-
-// ClusterPositioner computes the 2D position of a cluster.
-type ClusterPositioner interface {
-	// Position (re)computes the position of the cluster.
-	Position(clu Cluster) (x, y float64)
-	// Name of the positioner.
-	Name() string
-}
-
-// DEClustersDecoder decodes DEClusters from an underlying stream.
-type DEClustersDecoder interface {
-	// Decode reads the next DEClusters from its input and stores it
-	// in the value pointed by clu.
-	Decode(declu *DEClusters) error
-	// Close may be necessary for those decoder implementations.
-	Close()
-}
-
-// DEClustersDecoder encodes DEClusters onto the underlying stream.
-type DEClustersEncoder interface {
-	// Encode writes the encoding of clu to the stream.
-	Encode(declu *DEClusters) error
-	// Close may be necessary for those decoder implementations to flush data.
-	Close()
 }
 
 // String gets a string representation of the position.

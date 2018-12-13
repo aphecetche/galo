@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"os"
-	"strconv"
 	"testing"
 
 	"github.com/aphecetche/galo"
@@ -199,7 +197,6 @@ func TestCreateEvents(t *testing.T) {
 	}{{1024, 3, 6},
 		{1024, 6, 8},
 		{2048, 6, 11}}
-	loop := 0
 	for _, tp := range tests {
 		// generate a flatbuffer containing enough Events
 		// to get bigger than the decoder reading buffer size (decsize),
@@ -207,10 +204,6 @@ func TestCreateEvents(t *testing.T) {
 		// all our clusters
 		buf, n := createFakeEvents(tp.decsize, tp.nperdec)
 
-		f, _ := os.Create("toto" + strconv.Itoa(loop) + ".dat")
-		f.Write(buf)
-		f.Close()
-		loop++
 		if n != tp.want {
 			t.Errorf("Want %v events. Got %d", tp.want, n)
 		}

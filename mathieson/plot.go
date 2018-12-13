@@ -6,7 +6,6 @@ import (
 	"math"
 
 	"github.com/aphecetche/galo"
-	"github.com/aphecetche/galo/plot"
 	"go-hep.org/x/hep/hplot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
@@ -91,5 +90,5 @@ func plot1D(fname string) {
 	// p.X.Label.Text = "λ"
 
 	p.Legend.Top = true
-	plot.SavePlot(p, fname, "1d")
+	galo.SavePlot(p, fname, "1d")
 }
