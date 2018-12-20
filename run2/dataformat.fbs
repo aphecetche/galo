@@ -32,4 +32,5 @@ table Event {
         clusters:[Cluster];
 }
 
+root_type PreCluster;
 root_type Event;
