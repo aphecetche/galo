@@ -29,3 +29,35 @@ func (pre PreCluster) String() string {
 	}
 	return s
 }
+
+// SamePreCluster returns true if both preclusters have :
+// - the same digits
+// - in the same order
+func SamePreCluster(a, b PreCluster) bool {
+	if a.NofPads() != b.NofPads() {
+		return false
+	}
+	for i := 0; i < a.NofPads(); i++ {
+		da := a.Digits[i]
+		db := b.Digits[i]
+		if !SameDigitLocation(da, db) {
+			return false
+		}
+	}
+	return true
+}
+
+// ShareDigits returns true if both precluster have at least
+// one digit in common
+func ShareDigits(a, b PreCluster) bool {
+	for i := 0; i < a.NofPads(); i++ {
+		da := a.Digits[i]
+		for j := 0; j < b.NofPads(); j++ {
+			db := b.Digits[j]
+			if SameDigitLocation(da, db) {
+				return true
+			}
+		}
+	}
+	return false
+}

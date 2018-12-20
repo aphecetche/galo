@@ -32,4 +32,4 @@ Use "galo cluster [command] --help" for more information about a command.
 
 The `convert` command so far can only get from clusters in YAML format to clusters in HTML(SVG really) format.
 
-The `create` command generate a cluster at given position within a detection element. Used to observe the charge distribution, and to fed known clusters to the clustering. 
+The `create` command generate a cluster at given position within a detection element. Used to observe the charge distribution, and to feed known clusters to the clustering. 

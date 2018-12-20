@@ -20,3 +20,8 @@ type DigitGroup struct {
 func (d Digit) String() string {
 	return fmt.Sprintf("ID %6d Q %7.3f", d.ID, d.Q)
 }
+
+// SameDigitLocation returns true if the digits are the same pad
+func SameDigitLocation(da, db Digit) bool {
+	return da.ID == db.ID
+}

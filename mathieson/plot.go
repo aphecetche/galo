@@ -53,10 +53,10 @@ func gausFunc(mu, sigma float64, r, g, b uint8) *plotter.Function {
 func plot1D(fname string) {
 	p := hplot.New()
 
-	plotM2(p, MathiesonSt1, 255, 0, 0)
-	plotM2(p, MathiesonSt2345, 0, 0, 255)
+	plotM2(p, St1, 255, 0, 0)
+	plotM2(p, St2345, 0, 0, 255)
 
-	d := MathiesonSt1.X
+	d := St1.X
 
 	m7 := NewMathieson1D(0.25, 0.7)
 	m1 := NewMathieson1D(0.25, 1.0)

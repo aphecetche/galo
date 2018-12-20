@@ -26,12 +26,12 @@ var convertCmd = &cobra.Command{
 		defer output.Close()
 		from := NewClusterDecoder(input, src)
 		if from == nil {
-			log.Fatalf("Could not get decoder for input file %v", input)
+			log.Fatalf("Could not get decoder for input file %v", src)
 		}
 		defer from.Close()
 		to := NewClusterEncoder(output, dest)
 		if to == nil {
-			log.Fatalf("Could not get encoder for output file %v", input)
+			log.Fatalf("Could not get encoder for output file %v", dest)
 		}
 		defer to.Close()
 		n := 0

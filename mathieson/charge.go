@@ -5,6 +5,7 @@ import (
 
 	"github.com/aphecetche/galo"
 	"github.com/aphecetche/pigiron/mapping"
+	_ "github.com/aphecetche/pigiron/mapping/impl4"
 )
 
 type ChargeSpreadFunc func(q, x, y float64) []galo.Digit

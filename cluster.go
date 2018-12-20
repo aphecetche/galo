@@ -2,6 +2,9 @@ package galo
 
 import (
 	"fmt"
+
+	"github.com/aphecetche/pigiron/mapping"
+	"github.com/gonum/floats"
 )
 
 // Cluster represents a MCH cluster.
@@ -50,4 +53,31 @@ func (clu Cluster) String() string {
 	s += fmt.Sprintf(" Pos=%v", clu.Pos)
 	s += fmt.Sprintf(" Pre=%v", clu.Pre)
 	return s
+}
+
+// SameCluster returns true if the two clusters :
+// - have the same precluster
+// - have close enough positions
+func SameCluster(ca, cb Cluster) bool {
+	pa := ca.Pre
+	pb := cb.Pre
+	if !SamePreCluster(pa, pb) {
+		return false
+	}
+	const tol = 1E-6
+	return floats.EqualWithinAbs(float64(ca.Pos.X), float64(cb.Pos.X), tol) &&
+		floats.EqualWithinAbs(float64(ca.Pos.Y), float64(cb.Pos.Y), tol)
+}
+
+func MockClustersFromDigitGroups(deid mapping.DEID, positions []ClusterPos, charges []float64, dgs []DigitGroup) DEClusters {
+	var clusters []Cluster
+
+	for i, dg := range dgs {
+		pre := PreCluster{DigitGroup: dg}
+		pos := ClusterPos{X: positions[i].X, Y: positions[i].Y}
+		clu := Cluster{Pre: pre, Pos: pos, Q: ClusterCharge(charges[i])}
+		clusters = append(clusters, clu)
+	}
+
+	return DEClusters{DeID: deid, Clusters: clusters}
 }
