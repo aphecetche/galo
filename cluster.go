@@ -69,13 +69,13 @@ func SameCluster(ca, cb Cluster) bool {
 		floats.EqualWithinAbs(float64(ca.Pos.Y), float64(cb.Pos.Y), tol)
 }
 
-func MockClustersFromDigitGroups(deid mapping.DEID, positions []ClusterPos, charges []float64, dgs []DigitGroup) DEClusters {
+func MockClustersFromDigitGroups(deid mapping.DEID, positions []ClusterPos, charges []ClusterCharge, dgs []DigitGroup) DEClusters {
 	var clusters []Cluster
 
 	for i, dg := range dgs {
 		pre := PreCluster{DigitGroup: dg}
 		pos := ClusterPos{X: positions[i].X, Y: positions[i].Y}
-		clu := Cluster{Pre: pre, Pos: pos, Q: ClusterCharge(charges[i])}
+		clu := Cluster{Pre: pre, Pos: pos, Q: charges[i]}
 		clusters = append(clusters, clu)
 	}
 

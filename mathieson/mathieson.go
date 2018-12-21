@@ -81,7 +81,7 @@ func NewMathieson2D(pitch, k3x, k3y float64) *Mathieson2D {
 
 // Integrate computes the 2D integral of the Dist over the area (x1,y1)->(x2,y2).
 func (m Mathieson2D) Integrate(x1, y1, x2, y2 float64) float64 {
-	return 2.0 * m.X.Integrate(x1, x2) * m.Y.Integrate(y1, y2)
+	return 4.0 * m.X.Integrate(x1, x2) * m.Y.Integrate(y1, y2)
 }
 
 // ComputeK2K4FromK3 computes the K3 parameter of the Dist,

@@ -21,7 +21,7 @@ func TestMathieson(t *testing.T) {
 	var y2 float64 = 2
 
 	v := m.Integrate(x1, y1, x2, y2)
-	expected := 0.12498849
+	expected := 0.12498849 * 2.0
 	if !floats.EqualWithinAbs(v, expected, 1E-6) {
 		t.Errorf("Wanted %7.2f Got %7.2f\n", expected, v)
 	}
