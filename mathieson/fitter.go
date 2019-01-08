@@ -11,7 +11,7 @@ import (
 	"gonum.org/v1/gonum/optimize"
 )
 
-// mathiesonFitter implements galo.ClusterPositioner.
+// mathiesonFitter implements galo.DEClusterPositioner.
 type mathiesonFitter struct {
 	mat2D  Mathieson2D // F implements galo.ChargeIntegrator
 	method optimize.Method
@@ -40,10 +40,10 @@ func (cp *mathiesonFitter) Position(declu *galo.DEClusters, i int) (x, y float64
 		n++
 		x := pos[0]
 		y := pos[1]
-		q := pos[2]
+		q := pos[2] / 2.0 // FIXME: should take into account the fact that charge splitting is not perfect (i.e. not 50% on each cathode all the time).
 		lnL := 0.0
 		for i, b := range boxes {
-			dq := q*galo.ChargeOverBox(x, y, cp.mat2D, b) - charges[i]
+			dq := q*galo.ChargeOverBox(x, y, &cp.mat2D, b) - charges[i]
 			lnL += dq * dq
 		}
 		return lnL

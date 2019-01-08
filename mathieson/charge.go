@@ -14,7 +14,7 @@ func (f ChargeSpreadFunc) SpreadCharge(q, x, y float64) []galo.Digit {
 	return f(q, x, y)
 }
 
-func NewMathiesonChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeSpreadFunc {
+func NewChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeSpreadFunc {
 	seg := mapping.NewSegmentation(deid)
 	integ := NewChargeIntegrator(deid)
 	return func(q, x, y float64) []galo.Digit {
@@ -35,7 +35,7 @@ func NewMathiesonChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeS
 		}
 
 		for paduid, _ := range pids {
-			dq := galo.ChargeOverBox(x, y, integ, mapping.ComputePadBBox(seg, paduid))
+			dq := 0.5 * galo.ChargeOverBox(x, y, integ, mapping.ComputePadBBox(seg, paduid))
 			if dq < minRelCharge {
 				continue
 			}

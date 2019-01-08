@@ -93,10 +93,9 @@ func plotMultiplicity(h *hbook.H1D) *hplot.Plot {
 	return p
 }
 
-func plotResidual(h *hbook.H1D) *hplot.Plot {
+func PlotResidual(h *hbook.H1D) *hplot.Plot {
 
 	p := hplot.New()
-	p.X.Label.Text = "Distance (cm)"
 	h.Scale(1 / h.Integral())
 
 	hh := hplot.NewH1D(h)
@@ -132,7 +131,6 @@ func plotResidual(h *hbook.H1D) *hplot.Plot {
 	f.Samples = 1000
 	p.Add(f)
 
-	p.X.Max = 1.0
 	return p
 }
 
@@ -145,7 +143,10 @@ func PlotHistogramCollection(hc *Collection) []*hplot.Plot {
 		// fmt.Printf("%40s entries %4d Xmean %7.2f\n", h.Name(), h.Entries(), h.XMean())
 		name := (h.Annotation()["name"]).(string)
 		if strings.Contains(name, "residual") {
-			plots = append(plots, plotResidual(h))
+			pr := PlotResidual(h)
+			pr.X.Label.Text = "Distance (cm)"
+			pr.X.Max = 1.0
+			plots = append(plots, pr)
 		}
 		if strings.Contains(name, "multiplicity") {
 			plots = append(plots, plotMultiplicity(h))
