@@ -17,14 +17,19 @@ var createCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		positions := []galo.ClusterPos{{x, y}, {x - 5, y - 5}}
-		charges := []float64{charge * 2.0, charge / 2.0}
+		var charges []galo.ClusterCharge
 
 		deid := mapping.DEID(deidFlag)
 
 		var dgs []galo.DigitGroup
 
-		for i, p := range positions {
-			dgs = append(dgs, mathieson.GenerateDigitGroup(deid, p.X, p.Y, charges[i]))
+		minRelCharge := 1E-4
+		q := charge / 2.0
+
+		for _, p := range positions {
+			dgs = append(dgs, mathieson.GenerateDigitGroup(deid, p.X, p.Y, q, minRelCharge))
+			charges = append(charges, galo.ClusterCharge(q))
+			q *= 4.0
 		}
 		clusters := galo.MockClustersFromDigitGroups(deid, positions, charges, dgs)
 

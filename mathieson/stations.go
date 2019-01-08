@@ -13,7 +13,7 @@ var St2345 Mathieson2D = *(NewMathieson2D(0.25, 0.7131*0.7131, 0.7642*0.7642))
 
 func NewChargeIntegrator(deid mapping.DEID) galo.ChargeIntegrator {
 	if deid < 300 {
-		return St1
+		return &St1
 	}
-	return St2345
+	return &St2345
 }

@@ -38,12 +38,17 @@ func createCluster(de testDEHit) galo.DEClusters {
 }
 
 func newFitter(deid mapping.DEID) galo.DEClusterPositioner {
-	var method optimize.Method = &optimize.NelderMead{}
+	return newFitterApprox(deid, math.Atan, math.Tanh)
+}
 
+func newFitterApprox(deid mapping.DEID, atanfunc, tanhfunc func(float64) float64) galo.DEClusterPositioner {
+	var method optimize.Method = &optimize.NelderMead{}
 	if deid < 500 {
-		return mathieson.NewClusterFitter(mathieson.St1, method)
+		m := mathieson.NewMathieson2DApprox(0.21, 0.7*0.7, 0.755*0.755, atanfunc, tanhfunc)
+		return mathieson.NewClusterFitter(*m, method)
 	}
-	return mathieson.NewClusterFitter(mathieson.St2345, method)
+	m := mathieson.NewMathieson2DApprox(0.25, 0.7131*0.7131, 0.7642*0.7642, atanfunc, tanhfunc)
+	return mathieson.NewClusterFitter(*m, method)
 }
 
 func TestBasicMathiesonFit(t *testing.T) {
@@ -84,16 +89,12 @@ func TestNoisyMathiesonFit(t *testing.T) {
 
 		h := hbook.NewH1D(128, 0, 1E3)
 		declu := createCluster(tp)
-		fitter := newFitter(declu.DeID)
-		// tc := galo.GetTaggedClusters(&declu)
-		// fmt.Printf("REF %v\n", tc)
+		fitter := newFitterApprox(declu.DeID, mathieson.AtanEq11, mathieson.TanhApprox1)
 		for _, noise := range []float64{10} {
 			for i := 0; i < N; i++ {
 				noisy := noisify(declu, noise/100.0)
 				res := 1E4 * galo.DEClusterResidual(&noisy, 0, fitter)
 				h.Fill(res, 1.0)
-				// tc := galo.GetTaggedClusters(&noisy)
-				// fmt.Printf("NOISE %5.2f %% %v RES %7.2f microns\n", noise, tc, res)
 			}
 			p := galo.PlotResidual(h)
 			s := fmt.Sprintf("Noise%3.1fPercent", noise)
@@ -143,4 +144,60 @@ func BenchmarkMathiesonFit(b *testing.B) {
 			}
 		})
 	}
+}
+
+// func BenchmarkMathiesonApprox(b *testing.B) {
+//
+// 	for _, tp := range []testDEHit{
+// 		{100, []testHit{{24.0, 72.0, 50.0}}},
+// 	} {
+// 		declu := createCluster(tp)
+// 		fitter := newFitter(declu.DEID, atanfunc, tanhfunc)
+// 		b.Run(m.name, func(b *testing.B) {
+// 			for i := 0; i < b.N; i++ {
+// 				_, _ = fitter.Position(&declu, 0)
+// 			}
+// 		})
+// 	}
+// }
+
+func generateTestPoints(deid mapping.DEID, N int) []testDEHit {
+	var th []testDEHit
+	seg := galo.SegCache.Segmentation(deid)
+	box := mapping.ComputeSegmentationBBox(seg)
+	for i := 0; i < N; i++ {
+		q := 100.0 + rand.Float64()*50.0
+		x := box.Xmin() + rand.Float64()*box.Width()
+		y := box.Ymin() + rand.Float64()*box.Height()
+		b, nb, err := seg.FindPadPairByPosition(x, y)
+		if err != nil {
+			// not a valid pad
+			continue
+		}
+		if !seg.IsValid(b) && !seg.IsValid(nb) {
+			// discard monocathode stuff
+			continue
+		}
+		th = append(th, testDEHit{deid, []testHit{{x, y, q}}})
+	}
+	return th
+}
+
+func TestMathiesonApprox(t *testing.T) {
+	h := hbook.NewH1D(128, 0, 1E3)
+	testpoints := generateTestPoints(100, 100)
+	for _, tp := range testpoints {
+		declu := createCluster(tp)
+		refFitter := newFitter(declu.DeID)
+		fitter := newFitterApprox(declu.DeID, math.Atan, mathieson.TanhApprox2)
+		res := 1E4 * galo.DEClusterResidual(&declu, 0, fitter)
+		refRes := 1E4 * galo.DEClusterResidual(&declu, 0, refFitter)
+		fmt.Printf("res=%8.4f microns ref=%8.4f mult=%d\n",
+			res,
+			refRes,
+			declu.Clusters[0].Pre.NofPads())
+		h.Fill(res, 1.0)
+	}
+	p := galo.PlotResidual(h)
+	galo.SavePlot(p, "TestNoisyMathieson", "Approx")
 }
