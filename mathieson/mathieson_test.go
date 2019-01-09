@@ -1,7 +1,6 @@
 package mathieson_test
 
 import (
-	"log"
 	"math"
 	"testing"
 
@@ -15,14 +14,13 @@ import (
 
 func TestMathieson(t *testing.T) {
 
-	m := mathieson.St1
-
 	var x1 float64 = 0
 	var y1 float64 = 0
 	var x2 float64 = 1
 	var y2 float64 = 2
 
-	v := m.Integrate(x1, y1, x2, y2)
+	ci := mathieson.NewChargeIntegrator(100, mathieson.IntegrateImplDefault)
+	v := ci.Integrate(x1, y1, x2, y2)
 	expected := 0.12498849 * 2.0
 	if !floats.EqualWithinAbs(v, expected, 1E-6) {
 		t.Errorf("Wanted %7.2f Got %7.2f\n", expected, v)
@@ -34,16 +32,11 @@ type approxFunc struct {
 	f    func(float64) float64
 }
 
-type mathiesonIntegrateFunc struct {
-	name string
-	f    func(float64, float64) float64
-}
-
 var (
 	result               float64
 	tanhapproximations   []approxFunc
 	atanapproximations   []approxFunc
-	matintapproximations []mathiesonIntegrateFunc
+	matintapproximations []mathieson.IntegrateImpl
 )
 
 func init() {
@@ -60,11 +53,13 @@ func init() {
 		{"eq9", mathieson.AtanEq9},
 		{"eq11", mathieson.AtanEq11},
 	}
-	matintapproximations = []mathiesonIntegrateFunc{
-		{"ref", integrateRef},
-		{"approx0", integrateApprox0},
-		{"tanh1atan", integrateTanh1Atan},
-		{"tanh1ataneq9", integrateTanh1AtanEq9},
+	matintapproximations = []mathieson.IntegrateImpl{
+		mathieson.IntegrateImplDefault,
+		mathieson.IntegrateImplTanhApprox1,
+		mathieson.IntegrateImplAtanEq5,
+		mathieson.IntegrateImplAtanEq7,
+		mathieson.IntegrateImplAtanEq9,
+		mathieson.IntegrateImplAtanEq11,
 	}
 }
 
@@ -128,69 +123,20 @@ func BenchmarkAtanApprox(b *testing.B) {
 	}
 }
 
-const (
-	inversePitch float64 = 4.761904761904762
-	k2           float64 = 1.0210176124166828
-	k4           float64 = 0.40934889717686523
-	sk3          float64 = 0.7
-)
-
-func integrate(x1, x2 float64, tanh, atan func(float64) float64) float64 {
-	lambda1 := x1 * inversePitch
-	lambda2 := x2 * inversePitch
-	u1 := sk3 * tanh(k2*lambda1)
-	u2 := sk3 * tanh(k2*lambda2)
-	return k4 * (atan(u1) - atan(u2))
-}
-
-func integrateRef(x1, x2 float64) float64 {
-	return integrate(x1, x2, math.Tanh, math.Atan)
-}
-
-func integrateApprox0(x1, x2 float64) float64 {
-	return integrateBis(x1, x2, math.Tanh, math.Atan)
-}
-
-func integrateBis(x1, x2 float64, tanh, atan func(float64) float64) float64 {
-	lambda1 := x1 * inversePitch
-	lambda2 := x2 * inversePitch
-	u1 := sk3 * tanh(k2*lambda1)
-	u2 := sk3 * tanh(k2*lambda2)
-	r := k4 * (atan(u1) - atan(u2))
-	u12 := u1 * u2
-	k := 0.0
-	if u12 > 1.0 {
-		if u1 > 0.0 {
-			k = math.Pi
-		} else {
-			k = -math.Pi
-		}
-	}
-	a := k4 * (atan((u1-u2)/(1.0+u12)) + k)
-	if !floats.EqualWithinAbs(a, r, 1E-3) {
-		log.Fatalf("a=%g r=%g u12=%g x1=%g x2=%g", a, r, u12, x1, x2)
-	}
-	return a
-}
-
-func integrateTanh1Atan(x1, x2 float64) float64 {
-	return integrate(x1, x2, mathieson.TanhApprox1, math.Atan)
-}
-
-func integrateTanh1AtanEq9(x1, x2 float64) float64 {
-	return integrate(x1, x2, mathieson.TanhApprox1, mathieson.AtanEq9)
-}
-
-func TestMathiesonIntegrateApprox(t *testing.T) {
+func TestMathiesonIntegrate1D(t *testing.T) {
+	pitch := mathieson.St1.Pitch
+	k3 := mathieson.St1.K3x
+	def := mathieson.Integrator1D(pitch, k3, mathieson.IntegrateImplDefault)
 	for _, approx := range matintapproximations {
-		t.Run(approx.name, func(t *testing.T) {
-			for x := 0.0; x < 20.0; x += 0.1 {
+		impl := mathieson.Integrator1D(pitch, k3, approx)
+		t.Run(approx.String(), func(t *testing.T) {
+			for x := 0.0; x < 20.0; x += 0.01 {
 				x1 := x
 				x2 := x + 1.0
-				a := approx.f(x1, x2)
-				expected := integrateRef(x1, x2)
-				if !floats.EqualWithinAbs(a, expected, 1E-3) {
-					t.Errorf("Wrong approx for %s(%g)=%g. Expected %g", approx.name,
+				a := impl(x1, x2)
+				expected := def(x1, x2)
+				if !floats.EqualWithinAbs(a, expected, 1E-2) {
+					t.Errorf("Wrong approx for %s(%g)=%g. Expected %g", approx.String(),
 						x, a, expected)
 					break
 				}
@@ -199,15 +145,18 @@ func TestMathiesonIntegrateApprox(t *testing.T) {
 	}
 }
 
-func BenchmarkMathiesonIntegrateApprox(b *testing.B) {
+func BenchmarkMathiesonIntegrate1D(b *testing.B) {
+	pitch := mathieson.St1.Pitch
+	k3 := mathieson.St1.K3x
 	for _, approx := range matintapproximations {
-		b.Run(approx.name, func(b *testing.B) {
+		impl := mathieson.Integrator1D(pitch, k3, approx)
+		b.Run(approx.String(), func(b *testing.B) {
 			var r float64
 			for n := 0; n < b.N; n++ {
-				for x := 0.0; x < 20.0; x += 0.1 {
+				for x := 0.0; x < 20.0; x += 0.01 {
 					x1 := x
 					x2 := x + 1.0
-					r = approx.f(x1, x2)
+					r = impl(x1, x2)
 				}
 			}
 			result = r

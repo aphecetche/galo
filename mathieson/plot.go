@@ -34,11 +34,6 @@ func plotM1(p *hplot.Plot, dir byte, dist Mathieson1D, r, g, b uint8, dashes []v
 	p.Legend.Add(fmt.Sprintf("K3%c=%7.3f Pitch=%5.2f cm", dir, dist.K3(), dist.Pitch()), f)
 }
 
-func plotM2(p *hplot.Plot, dist Mathieson2D, r, g, b uint8) {
-	plotM1(p, 'x', dist.X, r, g, b, nil)
-	plotM1(p, 'y', dist.Y, r, g, b, []vg.Length{vg.Points(2), vg.Points(2)})
-}
-
 func gausFunc(mu, sigma float64, r, g, b uint8) *plotter.Function {
 	f := plotter.NewFunction(func(x float64) float64 {
 		//c := math.Sqrt(2.0*math.Pi) * sigma
@@ -53,10 +48,12 @@ func gausFunc(mu, sigma float64, r, g, b uint8) *plotter.Function {
 func plot1D(fname string) {
 	p := hplot.New()
 
-	plotM2(p, St1, 255, 0, 0)
-	plotM2(p, St2345, 0, 0, 255)
+	plotM1(p, 'x', *NewMathieson1D(St1.Pitch, St1.K3x), 255, 0, 0, nil)
+	plotM1(p, 'y', *NewMathieson1D(St1.Pitch, St1.K3y), 255, 0, 0, []vg.Length{vg.Points(2), vg.Points(2)})
+	plotM1(p, 'x', *NewMathieson1D(St2345.Pitch, St2345.K3x), 0, 0, 255, nil)
+	plotM1(p, 'y', *NewMathieson1D(St2345.Pitch, St2345.K3y), 0, 0, 255, []vg.Length{vg.Points(2), vg.Points(2)})
 
-	d := St1.X
+	d := *NewMathieson1D(St1.Pitch, St1.K3x)
 
 	m7 := NewMathieson1D(0.25, 0.7)
 	m1 := NewMathieson1D(0.25, 1.0)
