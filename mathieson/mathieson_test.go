@@ -135,7 +135,7 @@ func TestMathiesonIntegrate1D(t *testing.T) {
 				x2 := x + 1.0
 				a := impl(x1, x2)
 				expected := def(x1, x2)
-				if !floats.EqualWithinAbs(a, expected, 1E-3) {
+				if !floats.EqualWithinAbs(a, expected, 1E-2) {
 					t.Errorf("Wrong approx for %s(%g)=%g. Expected %g", approx.String(),
 						x, a, expected)
 					break
