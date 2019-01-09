@@ -16,7 +16,7 @@ var createCmd = &cobra.Command{
 	Short: "Generate clusters",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		positions := []galo.ClusterPos{{x, y}, {x - 5, y - 5}}
+		positions := []galo.ClusterPos{{X: x, Y: y}, {X: x - 5, Y: y - 5}}
 		var charges []galo.ClusterCharge
 
 		deid := mapping.DEID(deidFlag)

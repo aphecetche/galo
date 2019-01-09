@@ -11,6 +11,7 @@ import (
 	"github.com/aphecetche/pigiron/mapping"
 	"github.com/gonum/floats"
 	"go-hep.org/x/hep/hbook"
+	"go-hep.org/x/hep/hplot"
 	"gonum.org/v1/gonum/optimize"
 )
 
@@ -37,22 +38,37 @@ func createCluster(de testDEHit) galo.DEClusters {
 	return galo.MockClustersFromDigitGroups(deid, positions, charges, dgs)
 }
 
-func newFitter(deid mapping.DEID) galo.DEClusterPositioner {
-	return newFitterApprox(deid, math.Atan, math.Tanh)
+//TODO: create here several galo.Fitter types with various Integrate approximations
+// type testFitter struct {
+// 	name   string
+// 	fitter *galo.Fitter
+// }
+//
+// var (
+// 	fitters []testFitter
+// )
+//
+// func init() {
+// 	fitters = []testFitter{
+// 		{"ref", newFitter(100)},
+// 	}
+// }
+
+func newIntegrator(f func(x1, x2 float64) float64) galo.IntegrateFunc {
+	return func(x1, y1, x2, y2 float64) float64 {
+		return 4.0 * f(x1, x2) * f(y1, y2)
+	}
 }
 
-func newFitterApprox(deid mapping.DEID, atanfunc, tanhfunc func(float64) float64) galo.DEClusterPositioner {
-	var method optimize.Method = &optimize.NelderMead{}
-	if deid < 500 {
-		m := mathieson.NewMathieson2DApprox(0.21, 0.7*0.7, 0.755*0.755, atanfunc, tanhfunc)
-		return mathieson.NewClusterFitter(*m, method)
-	}
-	m := mathieson.NewMathieson2DApprox(0.25, 0.7131*0.7131, 0.7642*0.7642, atanfunc, tanhfunc)
-	return mathieson.NewClusterFitter(*m, method)
+func newFitter(deid mapping.DEID) *galo.Fitter {
+	return &galo.Fitter{Integrator: mathieson.NewChargeIntegrator(deid, mathieson.IntegrateImplDefault), Method: &optimize.NelderMead{}}
+}
+
+func newFastFitter(deid mapping.DEID) *galo.Fitter {
+	return &galo.Fitter{Integrator: mathieson.NewChargeIntegrator(deid, mathieson.IntegrateImplAtanEq9TanhApprox1), Method: &optimize.NelderMead{}}
 }
 
 func TestBasicMathiesonFit(t *testing.T) {
-
 	for _, tp := range []testDEHit{
 		{100, []testHit{{24.0, 72.0, 50.0}}},
 		{500, []testHit{{20.0, 0, 50.0}}},
@@ -75,7 +91,7 @@ func noisify(declu galo.DEClusters, noiseFraction float64) galo.DEClusters {
 			}
 			digits = append(digits, galo.Digit{ID: d.ID, Q: dq})
 		}
-		clusters = append(clusters, galo.Cluster{Pre: galo.PreCluster{galo.DigitGroup{0, digits}}, Pos: clu.Pos, Q: clu.Q})
+		clusters = append(clusters, galo.Cluster{Pre: galo.PreCluster{DigitGroup: galo.DigitGroup{RefTime: 0, Digits: digits}}, Pos: clu.Pos, Q: clu.Q})
 	}
 	return galo.DEClusters{DeID: declu.DeID, Clusters: clusters}
 }
@@ -89,7 +105,8 @@ func TestNoisyMathiesonFit(t *testing.T) {
 
 		h := hbook.NewH1D(128, 0, 1E3)
 		declu := createCluster(tp)
-		fitter := newFitterApprox(declu.DeID, mathieson.AtanEq11, mathieson.TanhApprox1)
+		// 	fitter := newFastFitter(declu.DeID)
+		fitter := newFitter(declu.DeID)
 		for _, noise := range []float64{10} {
 			for i := 0; i < N; i++ {
 				noisy := noisify(declu, noise/100.0)
@@ -136,30 +153,16 @@ func BenchmarkMathiesonFit(b *testing.B) {
 		{"NelderMead", &optimize.NelderMead{}},
 	}
 
+	ci := mathieson.NewChargeIntegrator(declu.DeID, mathieson.IntegrateImplDefault)
 	for _, m := range methods {
 		b.Run(m.name, func(b *testing.B) {
-			fitter := mathieson.NewClusterFitter(mathieson.St1, m.method)
+			fitter := galo.Fitter{Integrator: ci, Method: m.method}
 			for i := 0; i < b.N; i++ {
 				_, _ = fitter.Position(&declu, 0)
 			}
 		})
 	}
 }
-
-// func BenchmarkMathiesonApprox(b *testing.B) {
-//
-// 	for _, tp := range []testDEHit{
-// 		{100, []testHit{{24.0, 72.0, 50.0}}},
-// 	} {
-// 		declu := createCluster(tp)
-// 		fitter := newFitter(declu.DEID, atanfunc, tanhfunc)
-// 		b.Run(m.name, func(b *testing.B) {
-// 			for i := 0; i < b.N; i++ {
-// 				_, _ = fitter.Position(&declu, 0)
-// 			}
-// 		})
-// 	}
-// }
 
 func generateTestPoints(deid mapping.DEID, N int) []testDEHit {
 	var th []testDEHit
@@ -183,21 +186,46 @@ func generateTestPoints(deid mapping.DEID, N int) []testDEHit {
 	return th
 }
 
-func TestMathiesonApprox(t *testing.T) {
-	h := hbook.NewH1D(128, 0, 1E3)
-	testpoints := generateTestPoints(100, 100)
+func generateClusters(deid int, n int) []galo.DEClusters {
+	testpoints := generateTestPoints(mapping.DEID(deid), n)
+	var clusters []galo.DEClusters
 	for _, tp := range testpoints {
-		declu := createCluster(tp)
-		refFitter := newFitter(declu.DeID)
-		fitter := newFitterApprox(declu.DeID, math.Atan, mathieson.TanhApprox2)
-		res := 1E4 * galo.DEClusterResidual(&declu, 0, fitter)
-		refRes := 1E4 * galo.DEClusterResidual(&declu, 0, refFitter)
-		fmt.Printf("res=%8.4f microns ref=%8.4f mult=%d\n",
-			res,
-			refRes,
-			declu.Clusters[0].Pre.NofPads())
-		h.Fill(res, 1.0)
+		clusters = append(clusters, createCluster(tp))
 	}
-	p := galo.PlotResidual(h)
-	galo.SavePlot(p, "TestNoisyMathieson", "Approx")
+	return clusters
+}
+
+func TestMathiesonFitterApproximations(t *testing.T) {
+	clusters := generateClusters(100, 1000)
+	for _, approx := range matintapproximations {
+		h := hbook.NewH1D(128, 0, 50)
+		fitter := &galo.Fitter{Integrator: mathieson.NewChargeIntegrator(100, approx), Method: &optimize.NelderMead{}}
+		t.Run(approx.String(), func(t *testing.T) {
+			for _, declu := range clusters {
+				res := 1E4 * galo.DEClusterResidual(&declu, 0, fitter)
+				h.Fill(res, 1.0)
+			}
+		})
+		p := hplot.New()
+		h.Scale(1 / h.Integral())
+		hh := hplot.NewH1D(h)
+		p.Add(hh)
+		galo.SavePlot(p, "TestMathiesonIntegrateApprox", approx.String())
+	}
+}
+
+func BenchmarkMathiesonFitterApproximations(b *testing.B) {
+	clusters := generateClusters(100, 100)
+	for _, approx := range matintapproximations {
+		fitter := &galo.Fitter{Integrator: mathieson.NewChargeIntegrator(100, approx), Method: &optimize.NelderMead{}}
+		b.Run(approx.String(), func(b *testing.B) {
+			var r float64
+			for _, declu := range clusters {
+				for i := 0; i < b.N; i++ {
+					r = galo.DEClusterResidual(&declu, 0, fitter)
+				}
+			}
+			result = r
+		})
+	}
 }

@@ -15,8 +15,8 @@ func (f ChargeSpreadFunc) SpreadCharge(q, x, y float64) []galo.Digit {
 }
 
 func NewChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeSpreadFunc {
-	seg := mapping.NewSegmentation(deid)
-	integ := NewChargeIntegrator(deid)
+	seg := galo.SegCache.Segmentation(deid)
+	integ := NewChargeIntegrator(deid, IntegrateImplDefault)
 	return func(q, x, y float64) []galo.Digit {
 		var digits []galo.Digit
 		deid := seg.DetElemID()

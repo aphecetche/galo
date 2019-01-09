@@ -5,15 +5,34 @@ import (
 	"github.com/aphecetche/pigiron/mapping"
 )
 
-// 2D Mathieson for St1 (pitch 2.1 mm)
-var St1 Mathieson2D = *(NewMathieson2D(0.21, 0.700*0.700, 0.755*0.755))
+type Station struct {
+	K3x   float64
+	K3y   float64
+	Pitch float64 //cm
+}
 
-// 2D Mathieson for St2 and St345 (pitch 2.5 mm)
-var St2345 Mathieson2D = *(NewMathieson2D(0.25, 0.7131*0.7131, 0.7642*0.7642))
+var (
+	St1    Station = Station{0.49, 0.570025, 0.21}
+	St2345 Station = Station{0.50851161, 0.58400164, 0.25}
+)
 
-func NewChargeIntegrator(deid mapping.DEID) galo.ChargeIntegrator {
-	if deid < 300 {
-		return &St1
+func integrator1DPair(st Station, impl IntegrateImpl) (Integrate1DFunc, Integrate1DFunc) {
+	return Integrator1D(st.Pitch, st.K3x, impl),
+		Integrator1D(st.Pitch, st.K3y, impl)
+}
+
+func newIntegrateFunc(fx, fy Integrate1DFunc) galo.IntegrateFunc {
+	return func(x1, y1, x2, y2 float64) float64 {
+		return 4.0 * fx(x1, x2) * fy(y1, y2)
 	}
-	return &St2345
+}
+
+func NewChargeIntegrator(deid mapping.DEID, impl IntegrateImpl) galo.ChargeIntegrator {
+	var fx, fy Integrate1DFunc
+	st := St2345
+	if deid < 300 {
+		st = St1
+	}
+	fx, fy = integrator1DPair(st, impl)
+	return newIntegrateFunc(fx, fy)
 }

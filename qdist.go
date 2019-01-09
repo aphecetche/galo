@@ -7,6 +7,13 @@ type ChargeIntegrator interface {
 	Integrate(x1, y1, x2, y2 float64) float64
 }
 
+// IntegrateFunc functions implement ChargeIntegrator.
+type IntegrateFunc func(x1, y1, x2, y2 float64) float64
+
+func (f IntegrateFunc) Integrate(x1, y1, x2, y2 float64) float64 {
+	return f(x1, y1, x2, y2)
+}
+
 // Integrate a unit charge originating from (x,y) over the
 // surface given by (lowerLeft,topRight)
 func ChargeOverBox(x, y float64, integ ChargeIntegrator, bbox geo.BBox) float64 {
