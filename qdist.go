@@ -1,7 +1,5 @@
 package galo
 
-import "github.com/aphecetche/pigiron/geo"
-
 // ChargeIntegrator wraps the single Integrate method.
 type ChargeIntegrator interface {
 	Integrate(x1, y1, x2, y2 float64) float64
@@ -15,12 +13,12 @@ func (f IntegrateFunc) Integrate(x1, y1, x2, y2 float64) float64 {
 }
 
 // Integrate a unit charge originating from (x,y) over the
-// surface given by (lowerLeft,topRight)
-func ChargeOverBox(x, y float64, integ ChargeIntegrator, bbox geo.BBox) float64 {
-	x1 := bbox.Xmin() - float64(x)
-	y1 := bbox.Ymin() - float64(y)
-	x2 := x1 + bbox.Width()
-	y2 := y1 + bbox.Height()
+// surface given by xmin,ymin,xmax,ymax
+func ChargeOverBox(x, y float64, integ ChargeIntegrator, xmin, ymin, xmax, ymax float64) float64 {
+	x1 := xmin - float64(x)
+	y1 := ymin - float64(y)
+	x2 := x1 + xmax - xmin
+	y2 := y1 + ymax - ymin
 	return integ.Integrate(x1, y1, x2, y2)
 }
 

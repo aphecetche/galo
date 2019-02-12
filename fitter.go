@@ -3,7 +3,6 @@ package galo
 import (
 	"log"
 
-	"github.com/aphecetche/pigiron/geo"
 	"github.com/aphecetche/pigiron/mapping"
 	"gonum.org/v1/gonum/diff/fd"
 	"gonum.org/v1/gonum/mat"
@@ -21,12 +20,16 @@ func (f *Fitter) Position(declu *DEClusters, i int) (x, y float64) {
 
 	seg := SegCache.Segmentation(declu.DeID)
 	var charges []float64
-	var boxes []geo.BBox
+	var xmin, ymin, xmax, ymax []float64
+	var x1, y1, x2, y2 float64
 
 	for _, d := range clu.Pre.Digits {
 		charges = append(charges, d.Q)
-		b := mapping.ComputePadBBox(seg, d.ID)
-		boxes = append(boxes, b)
+		mapping.ComputePadBBox(seg, d.ID, &x1, &y1, &x2, &y2)
+		xmin = append(xmin, x1)
+		xmax = append(xmax, x2)
+		ymin = append(ymin, y1)
+		ymax = append(ymin, y2)
 	}
 
 	n := 0
@@ -37,8 +40,8 @@ func (f *Fitter) Position(declu *DEClusters, i int) (x, y float64) {
 		y := pos[1]
 		q := pos[2] / 2.0 // FIXME: should take into account the fact that charge splitting is not perfect (i.e. not 50% on each cathode all the time).
 		lnL := 0.0
-		for i, b := range boxes {
-			dq := q*ChargeOverBox(x, y, f.Integrator, b) - charges[i]
+		for i, _ := range charges {
+			dq := q*ChargeOverBox(x, y, f.Integrator, xmin[i], ymin[i], xmax[i], ymax[i]) - charges[i]
 			lnL += dq * dq
 		}
 		return lnL

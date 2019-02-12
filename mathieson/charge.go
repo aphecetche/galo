@@ -1,7 +1,7 @@
 package mathieson
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/aphecetche/galo"
 	"github.com/aphecetche/pigiron/mapping"
@@ -19,23 +19,27 @@ func NewChargeSpreader(deid mapping.DEID, minRelCharge float64) ChargeSpreadFunc
 	integ := NewChargeIntegrator(deid, IntegrateImplDefault)
 	return func(q, x, y float64) []galo.Digit {
 		var digits []galo.Digit
-		deid := seg.DetElemID()
-		pb, pnb, err := seg.FindPadPairByPosition(x, y)
-		if err != nil {
-			log.Fatalf("Could not find at (%v,%v)  DE %v", x, y, deid)
-		}
-		neighbours := seg.GetNeighbours(pb)
-		neighbours = append(neighbours, seg.GetNeighbours(pnb)...)
-		for _, nei := range neighbours {
-			neighbours = append(neighbours, seg.GetNeighbours(nei)...)
-		}
-		pids := make(map[mapping.PadUID]struct{})
-		for _, nei := range neighbours {
-			pids[nei] = struct{}{}
-		}
 
-		for paduid, _ := range pids {
-			dq := 0.5 * galo.ChargeOverBox(x, y, integ, mapping.ComputePadBBox(seg, paduid))
+		paduids := make(map[mapping.PadUID]struct{})
+
+		const sx float64 = 0.5 // cm
+		const sy float64 = 0.5 // cm // FIXME: where to get those from ?
+
+		xmin := x - sx
+		xmax := x + sx
+		ymin := y - sy
+		ymax := y + sy
+
+		seg.ForEachPadInArea(xmin, ymin, xmax, ymax, func(paduid mapping.PadUID) {
+			paduids[paduid] = struct{}{}
+		})
+
+		fmt.Println("# paduids=", len(paduids), paduids)
+
+		var xpadmin, ypadmin, xpadmax, ypadmax float64
+		for paduid, _ := range paduids {
+			mapping.ComputePadBBox(seg, mapping.PadUID(paduid), &xpadmin, &ypadmin, &xpadmax, &ypadmax)
+			dq := 0.5 * galo.ChargeOverBox(x, y, integ, xpadmin, ypadmin, xpadmax, ypadmax)
 			if dq < minRelCharge {
 				continue
 			}

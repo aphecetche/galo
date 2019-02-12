@@ -121,11 +121,12 @@ func (enc *svgClusterEncoder) encodeCathode(clu *galo.Cluster, seg mapping.Segme
 		if seg.IsBendingPad(paduid) != isBending {
 			continue
 		}
-		b := mapping.ComputePadBBox(seg, paduid)
+		var xmin, ymin, xmax, ymax float64
+		mapping.ComputePadBBox(seg, paduid, &xmin, &ymin, &xmax, &ymax)
 		if enc.charge == false {
-			enc.svgw.Rect(b.Xmin(), b.Ymin(), b.Width(), b.Height())
+			enc.svgw.Rect(xmin, ymin, xmax-xmin, ymax-ymin)
 		} else {
-			enc.svgw.RectWithClass(b.Xmin(), b.Ymin(), b.Width(), b.Height(), getClass(float32(d.Q)))
+			enc.svgw.RectWithClass(xmin, ymin, xmax-xmin, ymax-ymin, getClass(float32(d.Q)))
 		}
 	}
 	enc.svgw.GroupEnd()

@@ -27,11 +27,18 @@ type testDEHit struct {
 func createCluster(de testDEHit) galo.DEClusters {
 	minRelCharge := 1E-4
 	deid := mapping.DEID(de.deID)
+	cs := mathieson.NewChargeSpreader(deid, minRelCharge)
+	return createClustersFromChargeSpreader(de, cs)
+}
+
+func createClustersFromChargeSpreader(de testDEHit, cs galo.ChargeSpreader) galo.DEClusters {
+	deid := mapping.DEID(de.deID)
 	var dgs []galo.DigitGroup
 	var positions []galo.ClusterPos
 	var charges []galo.ClusterCharge
 	for _, hit := range de.hits {
-		dgs = append(dgs, mathieson.GenerateDigitGroup(deid, hit.x, hit.y, hit.q, minRelCharge))
+		digits := cs.SpreadCharge(hit.q, hit.x, hit.y)
+		dgs = append(dgs, galo.DigitGroup{RefTime: 0, Digits: digits})
 		positions = append(positions, galo.ClusterPos{X: hit.x, Y: hit.y})
 		charges = append(charges, galo.ClusterCharge(hit.q))
 	}
@@ -168,7 +175,8 @@ func generateTestPoints(deid mapping.DEID, N int) []testDEHit {
 	var th []testDEHit
 	seg := galo.SegCache.Segmentation(deid)
 	box := mapping.ComputeSegmentationBBox(seg)
-	for i := 0; i < N; i++ {
+	i := 0
+	for i < N {
 		q := 100.0 + rand.Float64()*50.0
 		x := box.Xmin() + rand.Float64()*box.Width()
 		y := box.Ymin() + rand.Float64()*box.Height()
@@ -182,17 +190,37 @@ func generateTestPoints(deid mapping.DEID, N int) []testDEHit {
 			continue
 		}
 		th = append(th, testDEHit{deid, []testHit{{x, y, q}}})
+		i++
 	}
 	return th
 }
 
 func generateClusters(deid int, n int) []galo.DEClusters {
 	testpoints := generateTestPoints(mapping.DEID(deid), n)
+	minRelCharge := 1E-4
+	cs := mathieson.NewChargeSpreader(mapping.DEID(deid), minRelCharge)
 	var clusters []galo.DEClusters
 	for _, tp := range testpoints {
-		clusters = append(clusters, createCluster(tp))
+		clusters = append(clusters, createClustersFromChargeSpreader(tp, cs))
 	}
 	return clusters
+}
+
+func TestGenerateTestPoints(t *testing.T) {
+	deid := 100
+	N := 100000
+	testpoints := generateTestPoints(mapping.DEID(deid), N)
+	if len(testpoints) != N {
+		t.Errorf("Wanted %d testpoints. Got %d\n", N, len(testpoints))
+	}
+
+}
+func TestGenerateClusters(t *testing.T) {
+	N := 10000
+	clusters := generateClusters(100, N)
+	if len(clusters) < 800 {
+		t.Errorf("Wanted %d clusters. Got %d\n", N, len(clusters))
+	}
 }
 
 func TestMathiesonFitterApproximations(t *testing.T) {
